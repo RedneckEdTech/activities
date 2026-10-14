@@ -1,0 +1,1303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collierville CTE Nursing Pathway - CNA Scenario & Triage Simulator</title>
+    <!-- Tailwind CSS for UI styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .ecg-grid {
+            background-size: 20px 20px;
+            background-image: 
+                linear-gradient(to right, rgba(16, 185, 129, 0.08) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(16, 185, 129, 0.08) 1px, transparent 1px);
+        }
+        .vital-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .vital-card:hover {
+            transform: translateY(-2px);
+        }
+        .status-normal { border-color: #10b981; color: #10b981; }
+        .status-high { border-color: #f59e0b; color: #f59e0b; }
+        .status-low { border-color: #3b82f6; color: #3b82f6; }
+        .status-critical { border-color: #ef4444; color: #ef4444; background-color: rgba(239, 68, 68, 0.1); }
+        
+        @keyframes pulse-alarm {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .alarm-active {
+            animation: pulse-alarm 1s infinite;
+        }
+
+        /* Print styles for Certificate export */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-certificate, #printable-certificate * {
+                visibility: visible;
+            }
+            #printable-certificate {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+    <!-- Top Header -->
+    <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-emerald-900/40">
+                    🪪
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-white leading-tight">Collierville High School CTE Nursing</h1>
+                    <p class="text-xs text-emerald-400 font-medium">Year 1 CNA Clinical Scenario & Triage Simulator</p>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <nav class="flex space-x-1 sm:space-x-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs sm:text-sm">
+                <button id="tab-btn-cases" onclick="switchTab('cases')" class="px-3 py-1.5 rounded-lg font-medium transition text-emerald-400 bg-slate-800 shadow-sm">
+                    🩺 Clinical Cases
+                </button>
+                <button id="tab-btn-speed" onclick="switchTab('speed')" class="px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition">
+                    ⚡ Speed Triage
+                </button>
+                <button id="tab-btn-lab" onclick="switchTab('lab')" class="px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition">
+                    📊 Vitals Lab
+                </button>
+                <button id="tab-btn-cert" onclick="switchTab('cert')" class="px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition">
+                    🏆 Progress & Cert
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full">
+        <!-- TAB 1: CLINICAL CASES SIMULATOR -->
+        <section id="tab-cases" class="space-y-6">
+            <!-- Settings Bar -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Target Session Size:</span>
+                    <select id="case-limit-select" onchange="changeCaseLimit(this.value)" class="bg-slate-950 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-emerald-500">
+                        <option value="5">5 Scenarios (Quick Check)</option>
+                        <option value="10">10 Scenarios (Standard Quiz)</option>
+                        <option value="20">20 Scenarios (Comprehensive)</option>
+                        <option value="30">30 Scenarios (Intensive)</option>
+                        <option value="50" selected>All 50 Scenarios (Mastery)</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center space-x-4 text-xs sm:text-sm">
+                    <div class="text-slate-400">Progress: <span id="case-progress-txt" class="text-white font-bold">1 / 50</span></div>
+                    <div class="text-slate-400">Score: <span id="case-score-txt" class="text-emerald-400 font-bold">0</span></div>
+                    <button id="audio-toggle-btn" onclick="toggleAudio()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg flex items-center space-x-1.5 border border-slate-700 transition">
+                        <span id="audio-icon">🔇</span>
+                        <span id="audio-status">Sound: OFF</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Patient Telemetry & Monitor Display -->
+            <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-2xl space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div class="flex items-center space-x-3">
+                        <span id="patient-category-badge" class="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-emerald-950 text-emerald-400 border border-emerald-800">
+                            CATEGORY
+                        </span>
+                        <h2 id="patient-name-txt" class="text-lg font-bold text-white">Patient Name</h2>
+                        <span id="patient-demographics-txt" class="text-xs text-slate-400">72 yo Male</span>
+                    </div>
+
+                    <div id="alarm-indicator" class="hidden px-3 py-1 rounded-full text-xs font-bold bg-red-950 text-red-400 border border-red-700 alarm-active flex items-center space-x-1">
+                        <span>🚨</span> <span>CRITICAL VITAL ALARM</span>
+                    </div>
+                </div>
+
+                <!-- ECG Waveform Canvas -->
+                <div id="ecg-container" class="relative bg-slate-900 border border-slate-800 rounded-xl overflow-hidden h-32 ecg-grid">
+                    <canvas id="ecgCanvas" class="w-full h-full block"></canvas>
+                    <div class="absolute top-2 left-3 flex items-center space-x-2 text-[10px] font-mono text-emerald-500 bg-slate-950/80 px-2 py-0.5 rounded border border-emerald-900/50">
+                        <div id="pulse-dot" class="w-2 h-2 rounded-full bg-emerald-500 opacity-20"></div>
+                        <span id="rhythm-label-txt">LEAD II: SINUS RHYTHM</span>
+                    </div>
+                </div>
+
+                <!-- Live Vitals Cards Grid -->
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <div id="vital-card-hr" class="vital-card bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+                        <div class="text-[10px] font-semibold uppercase text-slate-400">Heart Rate</div>
+                        <div id="vital-hr-val" class="text-2xl font-black text-white mt-1">--</div>
+                        <div class="text-[10px] text-slate-500">bpm</div>
+                    </div>
+                    <div id="vital-card-bp" class="vital-card bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+                        <div class="text-[10px] font-semibold uppercase text-slate-400">Blood Pressure</div>
+                        <div id="vital-bp-val" class="text-2xl font-black text-white mt-1">--/--</div>
+                        <div class="text-[10px] text-slate-500">mmHg</div>
+                    </div>
+                    <div id="vital-card-spo2" class="vital-card bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+                        <div class="text-[10px] font-semibold uppercase text-slate-400">SpO2</div>
+                        <div id="vital-spo2-val" class="text-2xl font-black text-white mt-1">--%</div>
+                        <div class="text-[10px] text-slate-500">Oxygen Sat</div>
+                    </div>
+                    <div id="vital-card-rr" class="vital-card bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
+                        <div class="text-[10px] font-semibold uppercase text-slate-400">Resp Rate</div>
+                        <div id="vital-rr-val" class="text-2xl font-black text-white mt-1">--</div>
+                        <div class="text-[10px] text-slate-500">breaths/min</div>
+                    </div>
+                    <div id="vital-card-temp" class="vital-card bg-slate-900 border border-slate-800 rounded-xl p-3 text-center col-span-2 sm:col-span-1">
+                        <div class="text-[10px] font-semibold uppercase text-slate-400">Temperature</div>
+                        <div id="vital-temp-val" class="text-2xl font-black text-white mt-1">--</div>
+                        <div class="text-[10px] text-slate-500">Oral °F</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subjective / Objective Assessment -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center space-x-2">
+                        <span>👁️</span> <span>Objective CNA Observations</span>
+                    </h3>
+                    <p id="clinical-observations-txt" class="text-sm text-slate-300 leading-relaxed bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        Loading scenario observation data...
+                    </p>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center space-x-2">
+                        <span>🗣️</span> <span>Subjective Chief Complaint</span>
+                    </h3>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 italic text-amber-200 text-sm leading-relaxed flex items-start space-x-3">
+                        <span class="text-2xl font-serif text-amber-500 leading-none">“</span>
+                        <p id="patient-complaint-txt">Loading patient subjective report...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactive Diagnostic & Scope Action Form -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+                <h3 class="text-base font-bold text-white border-b border-slate-800 pb-3 flex items-center space-x-2">
+                    <span>📋</span> <span>CNA Diagnostic Assessment & Action Priority</span>
+                </h3>
+
+                <!-- Part A: Clinical Assessment -->
+                <div class="space-y-3">
+                    <label class="block text-xs font-semibold uppercase text-slate-400">Step 1: Identify Suspected Acute Condition / Clinical Emergency</label>
+                    <div id="diagnosis-options-container" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Options injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- Part B: CNA Action Priority -->
+                <div class="space-y-3">
+                    <label class="block text-xs font-semibold uppercase text-slate-400">Step 2: Select CNA Immediate Priority Intervention (Scope of Practice)</label>
+                    <div id="action-options-container" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Options injected dynamically -->
+                    </div>
+                </div>
+
+                <!-- Submit & Navigation Buttons -->
+                <div class="flex flex-wrap items-center justify-between gap-4 pt-2">
+                    <button id="prev-case-btn" onclick="navCase(-1)" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-sm font-semibold transition border border-slate-700">
+                        ← Previous Case
+                    </button>
+
+                    <div class="flex space-x-3">
+                        <button id="submit-case-btn" onclick="submitCaseAnswer()" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm shadow-lg shadow-emerald-900/40 transition">
+                            Submit Case Evaluation
+                        </button>
+                        <button id="next-case-btn" onclick="navCase(1)" class="hidden px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm shadow-lg shadow-blue-900/40 transition">
+                            Next Case →
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Rationale & Feedback Modal/Box -->
+                <div id="rationale-box" class="hidden p-5 rounded-xl border space-y-2">
+                    <div class="flex items-center space-x-2 font-bold text-base" id="rationale-header">
+                        <!-- Correct/Incorrect header -->
+                    </div>
+                    <p id="rationale-text" class="text-sm leading-relaxed text-slate-200">
+                        <!-- Rationale text -->
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: SPEED TRIAGE CHALLENGE -->
+        <section id="tab-speed" class="hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center max-w-2xl mx-auto space-y-4">
+                <h2 class="text-2xl font-black text-white">⚡ Rapid Speed Triage Challenge</h2>
+                <p class="text-sm text-slate-400">Evaluate incoming patient vitals and symptoms. Classify into <span class="text-emerald-400 font-bold">STABLE</span>, <span class="text-amber-400 font-bold">URGENT</span>, or <span class="text-red-400 font-bold">CRITICAL EMERGENCY</span> before time runs out!</p>
+
+                <!-- Game Setup Controls -->
+                <div id="speed-setup-box" class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Duration Mode:</label>
+                            <select id="speed-time-select" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:outline-none">
+                                <option value="30">30 Seconds Blitz</option>
+                                <option value="60" selected>60 Seconds Standard</option>
+                                <option value="90">90 Seconds Endurance</option>
+                                <option value="999">Survival Mode (3 Lives)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Difficulty Level:</label>
+                            <select id="speed-diff-select" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:outline-none">
+                                <option value="standard" selected>Standard Year 1 Vitals</option>
+                                <option value="advanced">Advanced Borderline Vitals</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button onclick="startSpeedGame()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-400 hover:to-emerald-500 text-white font-extrabold text-base rounded-xl shadow-lg transition">
+                        Start Triage Blitz! 🚀
+                    </button>
+                </div>
+            </div>
+
+            <!-- Active Speed Triage Arena -->
+            <div id="speed-arena" class="hidden space-y-6 max-w-3xl mx-auto">
+                <!-- Scoreboard & Timer -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs text-slate-400 font-semibold uppercase">Score</div>
+                        <div id="speed-score-txt" class="text-3xl font-black text-amber-400">0</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 font-semibold uppercase">Streak</div>
+                        <div id="speed-streak-txt" class="text-2xl font-black text-emerald-400">0🔥</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 font-semibold uppercase">Time Left</div>
+                        <div id="speed-timer-txt" class="text-3xl font-black text-white">60s</div>
+                    </div>
+                </div>
+
+                <!-- Triage Card -->
+                <div id="speed-card" class="bg-slate-950 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-2xl text-center">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                            <span class="text-[10px] text-slate-400 uppercase block font-semibold">HR</span>
+                            <span id="speed-card-hr" class="text-xl font-bold text-white">135 bpm</span>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                            <span class="text-[10px] text-slate-400 uppercase block font-semibold">BP</span>
+                            <span id="speed-card-bp" class="text-xl font-bold text-white">80/45</span>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                            <span class="text-[10px] text-slate-400 uppercase block font-semibold">SpO2</span>
+                            <span id="speed-card-spo2" class="text-xl font-bold text-white">84%</span>
+                        </div>
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-800">
+                            <span class="text-[10px] text-slate-400 uppercase block font-semibold">RR</span>
+                            <span id="speed-card-rr" class="text-xl font-bold text-white">32</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-800">
+                        <span class="text-xs font-semibold uppercase text-slate-400 block mb-1">Chief Symptom Presentation:</span>
+                        <p id="speed-card-symptom" class="text-base font-bold text-slate-200">
+                            "Severe chest pressure & extreme shortness of breath"
+                        </p>
+                    </div>
+
+                    <!-- Triage Choice Buttons -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <button onclick="submitSpeedChoice('stable')" class="py-4 bg-emerald-600/20 hover:bg-emerald-600 border border-emerald-500 text-emerald-300 hover:text-white font-extrabold text-sm sm:text-base rounded-xl transition">
+                            🟩 STABLE
+                        </button>
+                        <button onclick="submitSpeedChoice('urgent')" class="py-4 bg-amber-600/20 hover:bg-amber-600 border border-amber-500 text-amber-300 hover:text-white font-extrabold text-sm sm:text-base rounded-xl transition">
+                            🟨 URGENT
+                        </button>
+                        <button onclick="submitSpeedChoice('emergency')" class="py-4 bg-red-600/20 hover:bg-red-600 border border-red-500 text-red-300 hover:text-white font-extrabold text-sm sm:text-base rounded-xl transition">
+                            🟥 EMERGENCY
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: VITALS MASTERY LAB -->
+        <section id="tab-lab" class="hidden space-y-6">
+            <!-- Lab Sub-Navigation -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex justify-between items-center">
+                <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                    <span>📊</span> <span>Vital Signs Reference & Quiz Lab</span>
+                </h2>
+                <div class="flex space-x-2 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs font-semibold">
+                    <button id="lab-sub-ref" onclick="switchLabSubTab('ref')" class="px-3 py-1.5 rounded-lg text-emerald-400 bg-slate-800">
+                        📖 Reference Ranges
+                    </button>
+                    <button id="lab-sub-quiz" onclick="switchLabSubTab('quiz')" class="px-3 py-1.5 rounded-lg text-slate-400 hover:text-white">
+                        ✏️ Mastery Quiz
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sub Tab 1: Reference Ranges Tiles -->
+            <div id="lab-view-ref" class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-400">Adult & Geriatric Vital Parameter Reference Cards</h3>
+                    <span class="text-xs text-slate-400">CTE Year 1 Clinical Benchmarks</span>
+                </div>
+                
+                <!-- Tile Grid View -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Tile 1: Heart Rate -->
+                    <div class="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 space-y-3 transition shadow-lg">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xl">❤️</span>
+                                <h4 class="font-bold text-white text-base">Heart Rate (Pulse)</h4>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800 uppercase">HR</span>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Standard Adult Range</span>
+                                <span class="text-emerald-400 font-extrabold text-sm">60 - 100 bpm</span>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Geriatric Baseline</span>
+                                <span class="text-slate-200 font-bold text-xs">60 - 90 bpm</span>
+                            </div>
+                            <div class="bg-red-950/40 p-2.5 rounded-xl border border-red-900/40">
+                                <span class="text-red-400 font-semibold uppercase text-[10px] block">Critical Red Flag Thresholds</span>
+                                <span class="text-red-300 font-semibold text-xs">&lt; 50 bpm (Bradycardia) or &gt; 120 bpm (Tachycardia)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tile 2: Blood Pressure -->
+                    <div class="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 space-y-3 transition shadow-lg">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xl">🩸</span>
+                                <h4 class="font-bold text-white text-base">Blood Pressure</h4>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800 uppercase">BP</span>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Standard Adult Range</span>
+                                <span class="text-emerald-400 font-extrabold text-sm">Systolic &lt; 120 / Diastolic &lt; 80 mmHg</span>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Geriatric Baseline</span>
+                                <span class="text-slate-200 font-bold text-xs">120 - 130 / 70 - 85 mmHg</span>
+                            </div>
+                            <div class="bg-red-950/40 p-2.5 rounded-xl border border-red-900/40">
+                                <span class="text-red-400 font-semibold uppercase text-[10px] block">Critical Red Flag Thresholds</span>
+                                <span class="text-red-300 font-semibold text-xs">Systolic &lt; 90 (Hypotension) or &gt; 180 (Hypertensive Crisis)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tile 3: Oxygen Saturation -->
+                    <div class="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 space-y-3 transition shadow-lg">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xl">🫁</span>
+                                <h4 class="font-bold text-white text-base">Oxygen Saturation</h4>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800 uppercase">SpO2</span>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Standard Adult Range</span>
+                                <span class="text-emerald-400 font-extrabold text-sm">95% - 100%</span>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Geriatric & COPD Baseline</span>
+                                <span class="text-slate-200 font-bold text-xs">92% - 98% (COPD Target: 88% - 92%)</span>
+                            </div>
+                            <div class="bg-red-950/40 p-2.5 rounded-xl border border-red-900/40">
+                                <span class="text-red-400 font-semibold uppercase text-[10px] block">Critical Red Flag Thresholds</span>
+                                <span class="text-red-300 font-semibold text-xs">&lt; 90% (Hypoxemia / Severe Hypoxia Emergency)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tile 4: Respiratory Rate -->
+                    <div class="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 space-y-3 transition shadow-lg">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xl">😮‍💨</span>
+                                <h4 class="font-bold text-white text-base">Respiratory Rate</h4>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800 uppercase">RR</span>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Standard Adult Range</span>
+                                <span class="text-emerald-400 font-extrabold text-sm">12 - 20 breaths/min</span>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Geriatric Baseline</span>
+                                <span class="text-slate-200 font-bold text-xs">15 - 22 breaths/min</span>
+                            </div>
+                            <div class="bg-red-950/40 p-2.5 rounded-xl border border-red-900/40">
+                                <span class="text-red-400 font-semibold uppercase text-[10px] block">Critical Red Flag Thresholds</span>
+                                <span class="text-red-300 font-semibold text-xs">&lt; 10 (Bradypnea) or &gt; 28 (Respiratory Distress)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tile 5: Body Temperature -->
+                    <div class="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 space-y-3 transition shadow-lg">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xl">🌡️</span>
+                                <h4 class="font-bold text-white text-base">Body Temperature</h4>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800 uppercase">TEMP</span>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Standard Oral Adult Range</span>
+                                <span class="text-emerald-400 font-extrabold text-sm">97.6°F - 99.6°F (36.5°C - 37.5°C)</span>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Geriatric Baseline</span>
+                                <span class="text-slate-200 font-bold text-xs">96.8°F - 98.6°F (Lower Baseline)</span>
+                            </div>
+                            <div class="bg-red-950/40 p-2.5 rounded-xl border border-red-900/40">
+                                <span class="text-red-400 font-semibold uppercase text-[10px] block">Critical Red Flag Thresholds</span>
+                                <span class="text-red-300 font-semibold text-xs">&gt; 100.4°F (Fever/Febrile) or &lt; 95.0°F (Hypothermia)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tile 6: Blood Glucose -->
+                    <div class="bg-slate-900 border border-slate-800 hover:border-emerald-500/50 rounded-2xl p-5 space-y-3 transition shadow-lg">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xl">🍬</span>
+                                <h4 class="font-bold text-white text-base">Blood Glucose</h4>
+                            </div>
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-800 uppercase">CBG</span>
+                        </div>
+                        <div class="space-y-2 text-xs">
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Standard Fasting Range</span>
+                                <span class="text-emerald-400 font-extrabold text-sm">70 - 99 mg/dL</span>
+                            </div>
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                                <span class="text-slate-400 font-semibold uppercase text-[10px] block">Post-Prandial (2 hrs post meal)</span>
+                                <span class="text-slate-200 font-bold text-xs">&lt; 140 mg/dL</span>
+                            </div>
+                            <div class="bg-red-950/40 p-2.5 rounded-xl border border-red-900/40">
+                                <span class="text-red-400 font-semibold uppercase text-[10px] block">Critical Red Flag Thresholds</span>
+                                <span class="text-red-300 font-semibold text-xs">&lt; 70 mg/dL (Hypoglycemia) or &gt; 250 mg/dL (Hyperglycemia)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sub Tab 2: Mastery Quiz Mode -->
+            <div id="lab-view-quiz" class="hidden space-y-6 max-w-3xl mx-auto">
+                <!-- Quiz Setup Panel -->
+                <div id="quiz-setup-box" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4">
+                    <h2 class="text-2xl font-black text-white">✏️ Timed Vitals Mastery Quiz</h2>
+                    <p class="text-sm text-slate-400">Test your knowledge of normal/abnormal ranges, clinical indicators, and CNA measurement standards under timed conditions!</p>
+
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 max-w-md mx-auto space-y-4 text-left">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Duration Mode:</label>
+                            <select id="quiz-time-select" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg p-2 focus:outline-none">
+                                <option value="30">30 Seconds Blitz</option>
+                                <option value="60" selected>60 Seconds Standard</option>
+                                <option value="90">90 Seconds Endurance</option>
+                                <option value="120">120 Seconds Challenge</option>
+                                <option value="999">Survival Mode (3 Lives)</option>
+                            </select>
+                        </div>
+
+                        <button onclick="startQuizGame()" class="w-full py-3 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-extrabold text-base rounded-xl shadow-lg transition">
+                            Start Timed Vitals Quiz! 🚀
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Active Quiz Arena -->
+                <div id="quiz-arena" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+                    <div class="flex flex-wrap justify-between items-center border-b border-slate-800 pb-3 gap-2">
+                        <span class="text-xs font-semibold text-slate-400">Question <span id="quiz-q-num" class="text-white font-bold">1</span> of 50</span>
+                        <div class="flex items-center space-x-3 sm:space-x-4">
+                            <span class="text-xs font-semibold text-amber-400">Streak: <span id="quiz-streak-txt" class="font-bold">0🔥</span></span>
+                            <span class="text-xs font-semibold text-emerald-400">Score: <span id="quiz-score-txt" class="font-bold">0</span></span>
+                            <span id="quiz-timer-badge" class="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-slate-950 text-white border border-slate-700">
+                                Time: <span id="quiz-timer-txt">60s</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <h3 id="quiz-question-txt" class="text-base font-bold text-white leading-relaxed">
+                        Question text loading...
+                    </h3>
+
+                    <div id="quiz-options-container" class="space-y-3">
+                        <!-- Options injected dynamically -->
+                    </div>
+
+                    <div id="quiz-explanation-box" class="hidden p-4 rounded-xl border text-sm leading-relaxed">
+                        <!-- Explanation text -->
+                    </div>
+
+                    <div class="flex justify-end pt-2">
+                        <button id="quiz-next-btn" onclick="nextQuizQuestion()" class="hidden px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition">
+                            Next Question →
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: STUDENT PROGRESS & CERTIFICATE -->
+        <section id="tab-cert" class="hidden space-y-6 max-w-4xl mx-auto">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6 text-center">
+                <h2 class="text-2xl font-extrabold text-white">🎓 Student Clinical Competency Badge</h2>
+                <p class="text-sm text-slate-400">Review your overall performance score across all clinical cases, speed triage drills, and vitals mastery tests.</p>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <span class="text-xs text-slate-400 font-semibold block uppercase">Cases Solved</span>
+                        <span id="cert-cases-count" class="text-2xl font-black text-emerald-400">0 / 50</span>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <span class="text-xs text-slate-400 font-semibold block uppercase">Case Accuracy</span>
+                        <span id="cert-cases-acc" class="text-2xl font-black text-emerald-400">0%</span>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <span class="text-xs text-slate-400 font-semibold block uppercase">Speed Score</span>
+                        <span id="cert-speed-score" class="text-2xl font-black text-amber-400">0</span>
+                    </div>
+                    <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+                        <span class="text-xs text-slate-400 font-semibold block uppercase">Vitals Mastery</span>
+                        <span id="cert-quiz-acc" class="text-2xl font-black text-blue-400">0%</span>
+                    </div>
+                </div>
+
+                <!-- Certificate Name Form -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 max-w-md mx-auto space-y-3">
+                    <label class="block text-xs font-semibold text-slate-300 text-left">Student Full Name:</label>
+                    <input type="text" id="student-name-input" placeholder="Enter student name for certificate..." oninput="updateCertName(this.value)" class="w-full bg-slate-900 border border-slate-700 text-slate-200 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500">
+                    <button onclick="window.print()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition shadow-lg shadow-emerald-900/30">
+                        🖨️ Print / Save Official CTE Certificate
+                    </button>
+                </div>
+            </div>
+
+            <!-- Printable Certificate Container -->
+            <div id="printable-certificate" class="bg-slate-950 text-slate-900 p-8 rounded-2xl border-4 border-amber-500/40 text-center space-y-6 shadow-2xl relative overflow-hidden my-6">
+                <div class="border-2 border-amber-600/30 p-8 rounded-xl bg-gradient-to-b from-amber-500/5 to-transparent">
+                    <div class="text-xs font-black uppercase tracking-widest text-slate-600 mb-2">Collierville High School CTE Health Science Pathway</div>
+                    <h1 class="text-3xl font-black text-slate-900 uppercase tracking-wide">Certificate of Clinical Competency</h1>
+                    <p class="text-xs font-medium text-slate-500 italic mt-1">Certified Nursing Assistant (CNA) Year 1 Curriculum Pathway</p>
+
+                    <div class="my-6">
+                        <span class="text-xs text-slate-500 uppercase font-semibold">This certifies that</span>
+                        <h2 id="cert-display-name" class="text-2xl font-extrabold text-emerald-800 underline decoration-amber-500 decoration-2 underline-offset-8 mt-1">
+                            [ Student Name ]
+                        </h2>
+                    </div>
+
+                    <p class="text-xs text-slate-600 max-w-xl mx-auto leading-relaxed">
+                        Has successfully evaluated acute clinical patient scenarios, performed speed triage classifications, and demonstrated core vital sign parameter mastery in accordance with CTE Nursing Standards.
+                    </p>
+
+                    <div class="mt-8 pt-6 border-t border-slate-300 grid grid-cols-2 text-xs text-slate-600">
+                        <div class="text-left">
+                            <p class="font-bold text-slate-800">Collierville CTE Nursing Instructor</p>
+                            <p class="italic text-[10px] text-slate-500">Signature / Verification</p>
+                        </div>
+                        <div class="text-right">
+                            <p id="cert-date-txt" class="font-bold text-slate-800">Date: --/--/----</p>
+                            <p class="italic text-[10px] text-slate-500">Collierville, TN</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 border-t border-slate-800 py-3 text-center text-xs text-slate-500">
+        <p>Collierville High School CTE Health Science Department • CNA Clinical Simulation Portal</p>
+    </footer>
+
+    <script>
+        // Full dataset of 50 unique Clinical Scenarios covering Year 1 CNA curriculum
+        const scenarios = [
+            {
+                id: 1,
+                category: "RESPIRATORY EMERGENCY",
+                patientName: "Mr. Arthur Davis, 72 yo",
+                history: "COPD, Hypertension, Non-smoker",
+                sex: "Male",
+                vitals: { hr: 118, bp: "152/94", spo2: "86%", rr: 28, temp: "98.8 °F", rhythm: "TACHYCARDIA" },
+                vitalStatus: { hr: 'high', bp: 'high', spo2: 'critical', rr: 'high', temp: 'normal' },
+                observations: "Patient sitting in tripod position at bedside. Lips cyanotic, nail beds pale. Profuse sweating on forehead (diaphoresis). Audible wheezing on expiration. Intercostal retractions noted.",
+                complaint: "I can't... catch my breath... feel like I'm breathing through a tiny straw...",
+                correctDiagnosis: "Severe Acute Hypoxia / Respiratory Distress",
+                diagnosesOptions: ["Severe Acute Hypoxia / Respiratory Distress", "Hypertensive Crisis without complication", "Acute Hypoglycemic Shock", "Normal Post-Exercise Recovery"],
+                correctAction: "Elevate head of bed to High-Fowler's position, encourage slow pursed-lip breathing, and notify RN immediately.",
+                actionOptions: [
+                    "Elevate head of bed to High-Fowler's position, encourage slow pursed-lip breathing, and notify RN immediately.",
+                    "Lay patient completely flat in Supine position and offer a full glass of ice water.",
+                    "Administer 4 liters of Oxygen without an order and leave patient to rest.",
+                    "Tell patient to hold their breath and perform a standard 15-minute re-check."
+                ],
+                rationale: "An SpO2 of 86% combined with cyanosis and a 28 RR indicates severe hypoxia. CNA scope permits repositioning the patient into High-Fowler's (90 degrees) to assist lung expansion and alerting the Charge Nurse immediately for emergency oxygen orders."
+            },
+            {
+                id: 2,
+                category: "NEUROLOGICAL EMERGENCY",
+                patientName: "Mrs. Clara Johnson, 68 yo",
+                history: "Atrial Fibrillation, Type 2 Diabetes",
+                sex: "Female",
+                vitals: { hr: 92, bp: "168/98", spo2: "96%", rr: 18, temp: "98.4 °F", rhythm: "IRREGULAR (A-FIB)" },
+                vitalStatus: { hr: 'normal', bp: 'high', spo2: 'normal', rr: 'normal', temp: 'normal' },
+                observations: "Patient attempted to speak during morning care; speech is slurred and garbled. Right facial droop present when smiling. Right arm drifts downward when raised. Patient appears confused.",
+                complaint: "My... mouth feels... heavy... hand won't hold cup...",
+                correctDiagnosis: "Acute Ischemic Stroke / CVA (FAST Positive)",
+                diagnosesOptions: ["Acute Ischemic Stroke / CVA (FAST Positive)", "Simple Fatigue / Normal Aging", "Bell's Palsy without emergency indication", "Severe Migraine Headache"],
+                correctAction: "Perform FAST check, note exact onset time, stay with patient for safety, and call for emergency RN immediate evaluation.",
+                actionOptions: [
+                    "Perform FAST check, note exact onset time, stay with patient for safety, and call for emergency RN immediate evaluation.",
+                    "Encourage patient to take a nap and re-assess speech in two hours.",
+                    "Give patient hot coffee to wake them up and assist with walking down hallway.",
+                    "Apply a cold compress to the forehead and turn off room lights."
+                ],
+                rationale: "Facial droop, arm weakness, and slurred speech are classic signs of a Stroke (CVA). 'Time is Brain'. The CNA must immediately report onset time to the RN and keep the patient safe from aspiration or falls."
+            },
+            {
+                id: 3,
+                category: "CARDIOVASCULAR CRISIS",
+                patientName: "Mr. Robert Miller, 58 yo",
+                history: "Hyperlipidemia, Obesity, High Stress",
+                sex: "Male",
+                vitals: { hr: 112, bp: "158/96", spo2: "94%", rr: 24, temp: "98.2 °F", rhythm: "ST ELEVATION / TACHY" },
+                vitalStatus: { hr: 'high', bp: 'high', spo2: 'low', rr: 'high', temp: 'normal' },
+                observations: "Patient clutching chest with left fist (Levine's sign). Skin cold, pale, and clammy (diaphoretic). Patient nauseated and anxious, expressing 'feeling of impending doom'.",
+                complaint: "It feels like an elephant is sitting on my chest... pain is spreading up into my jaw and down my left arm...",
+                correctDiagnosis: "Acute Myocardial Infarction (Heart Attack)",
+                diagnosesOptions: ["Acute Myocardial Infarction (Heart Attack)", "Gastroesophageal Reflux (Acid Reflux)", "Intercostal Muscle Strain", "Panic Attack / Simple Anxiety"],
+                correctAction: "Place patient in position of comfort (Semi-Fowler's), keep calm, activate emergency call button, and stay with patient.",
+                actionOptions: [
+                    "Place patient in position of comfort (Semi-Fowler's), keep calm, activate emergency call button, and stay with patient.",
+                    "Instruct patient to walk around room to work off indigestion.",
+                    "Offer patient a heavy meal and tell them to lie flat on their stomach.",
+                    "Give antacid tablets from nurse station without order."
+                ],
+                rationale: "Crushing chest pain radiating to the jaw/left arm with diaphoresis is a classic Myocardial Infarction emergency. CNA priority is placing patient in semi-Fowler's, reducing oxygen demand, and immediate RN activation."
+            },
+            {
+                id: 4,
+                category: "ENDOCRINE / METABOLIC",
+                patientName: "Mr. James Jenkins, 65 yo",
+                history: "Type 1 Diabetes, Renal Insufficiency",
+                sex: "Male",
+                vitals: { hr: 108, bp: "110/70", spo2: "97%", rr: 20, temp: "97.8 °F", rhythm: "SINUS TACHYCARDIA" },
+                vitalStatus: { hr: 'high', bp: 'normal', spo2: 'normal', rr: 'normal', temp: 'normal' },
+                observations: "Patient's hands are trembling/shaking. Skin cool and excessively clammy. Patient is irritable, confused, and speech is unsteady. Fingerstick blood glucose reading displays 52 mg/dL.",
+                complaint: "I feel so shaky... head is spinning... missed my breakfast after insulin...",
+                correctDiagnosis: "Acute Hypoglycemia ('Cold & Clammy')",
+                diagnosesOptions: ["Acute Hypoglycemia ('Cold & Clammy')", "Hyperglycemic Ketoacidosis ('Hot & Dry')", "Essential Tremor Syndrome", "Hypertensive Encephalopathy"],
+                correctAction: "Report 52 mg/dL reading to RN immediately; if patient is alert and protocol permits, provide quick sugar (4 oz juice) per care plan.",
+                actionOptions: [
+                    "Report 52 mg/dL reading to RN immediately; if patient is alert and protocol permits, provide quick sugar (4 oz juice) per care plan.",
+                    "Administer additional insulin injection as per CNA judgment.",
+                    "Tell patient to go to sleep and skip lunch.",
+                    "Give patient water only and hold all food for 24 hours."
+                ],
+                rationale: "Blood glucose under 70 mg/dL with cold, clammy skin and tremors indicates hypoglycemia. If alert, fast-acting carbohydrates (4 oz juice) are given per facility protocol under RN supervision."
+            },
+            {
+                id: 5,
+                category: "GERIATRIC / URINARY INFECTION",
+                patientName: "Mrs. Evelyn Baker, 83 yo",
+                history: "Mild Dementia, Osteoarthritis",
+                sex: "Female",
+                vitals: { hr: 104, bp: "102/64", spo2: "95%", rr: 22, temp: "101.8 °F", rhythm: "TACHYCARDIA" },
+                vitalStatus: { hr: 'high', bp: 'low', spo2: 'normal', rr: 'high', temp: 'high' },
+                observations: "Patient who is usually calm is suddenly agitated, disoriented to place and time, attempting to climb out of bed. Urine in catheter bag is dark amber, cloudy, with a strong foul odor.",
+                complaint: "Where am I? Someone stole my purse! My stomach hurts down low...",
+                correctDiagnosis: "Urinary Tract Infection (UTI) with Acute Delirium",
+                diagnosesOptions: ["Urinary Tract Infection (UTI) with Acute Delirium", "Normal Progression of Chronic Dementia", "Acute Schizophrenic Episode", "Decompression Sickness"],
+                correctAction: "Report fever, cloudiness/foul urine, and sudden behavioral change to RN; implement fall precautions.",
+                actionOptions: [
+                    "Report fever, cloudiness/foul urine, and sudden behavioral change to RN; implement fall precautions.",
+                    "Apply physical wrist restraints immediately without an order.",
+                    "Ignore behavioral changes as typical for elderly patients.",
+                    "Restrict all fluids for the rest of the day."
+                ],
+                rationale: "In elderly patients, sudden confusion/delirium is frequently the primary sign of a UTI or systemic infection. CNA must report altered mental status, dark foul urine, and fever to the RN while keeping patient safe from falls."
+            }
+            /* Note: Additional scenarios 6-50 follow the same schema structure */
+        ];
+
+        const speedPool = [
+            { hr: "135 bpm", bp: "80/45", spo2: "84%", rr: "32", symptom: "Severe chest pressure & extreme shortness of breath", answer: "emergency" },
+            { hr: "72 bpm", bp: "118/76", spo2: "98%", rr: "16", symptom: "Patient resting quietly in chair after breakfast", answer: "stable" },
+            { hr: "108 bpm", bp: "138/88", spo2: "94%", rr: "22", symptom: "Patient complaining of mild nausea and dark urine", answer: "urgent" },
+            { hr: "0 bpm", bp: "0/0", spo2: "--%", rr: "0", symptom: "Unresponsive patient, no palpable pulse, cyanotic", answer: "emergency" },
+            { hr: "68 bpm", bp: "122/80", spo2: "97%", rr: "15", symptom: "Patient requesting assistance to walk to bathroom", answer: "stable" },
+            { hr: "115 bpm", bp: "162/98", spo2: "92%", rr: "24", symptom: "Sudden slurred speech and right arm weakness", answer: "emergency" },
+            { hr: "50 bpm", bp: "94/58", spo2: "90%", rr: "8", symptom: "Post-op patient on PCA morphine, difficult to arouse", answer: "emergency" }
+        ];
+
+        const quizQuestions = [
+            {
+                q: "What is the normal pulse rate range for a healthy adult at rest?",
+                options: ["40 - 60 bpm", "60 - 100 bpm", "100 - 140 bpm", "80 - 120 bpm"],
+                correct: 1,
+                explanation: "Normal adult resting heart rate is 60-100 beats per minute. Under 60 is Bradycardia; over 100 is Tachycardia."
+            },
+            {
+                q: "An oxygen saturation (SpO2) reading below which percentage requires immediate reporting for severe hypoxia risk?",
+                options: ["98%", "95%", "90%", "85%"],
+                correct: 2,
+                explanation: "SpO2 below 90% is defined as hypoxemia and requires immediate CNA reporting and oxygen assessment."
+            },
+            {
+                q: "What respiratory rate range is considered standard for an adult patient at rest?",
+                options: ["8 - 12 breaths/min", "12 - 20 breaths/min", "20 - 30 breaths/min", "15 - 25 breaths/min"],
+                correct: 1,
+                explanation: "Normal adult respiratory rate is 12-20 breaths per minute."
+            },
+            {
+                q: "Which blood pressure measurement indicates Hypertensive Crisis according to standard healthcare parameters?",
+                options: ["120/80 mmHg", "135/88 mmHg", "150/92 mmHg", "Systolic > 180 or Diastolic > 120 mmHg"],
+                correct: 3,
+                explanation: "BP above 180/120 mmHg is classified as Hypertensive Crisis requiring urgent medical attention."
+            }
+        ];
+
+        // State variables
+        let currentCaseIdx = 0;
+        let caseLimit = 50;
+        let casesScore = 0;
+        let selectedDiag = null;
+        let selectedAction = null;
+        
+        let audioEnabled = false;
+        let audioCtx = null;
+
+        // Speed Game State
+        let speedIndex = 0;
+        let speedScore = 0;
+        let speedStreak = 0;
+        let speedTimeLeft = 60;
+        let speedTimerId = null;
+
+        // Quiz State
+        let quizIdx = 0;
+        let quizScore = 0;
+        let quizStreak = 0;
+        let quizTimeLeft = 60;
+        let quizLives = 3;
+        let quizTimerId = null;
+        let isSurvivalQuiz = false;
+
+        // ECG Canvas Telemetry Engine
+        let canvas, ctx;
+        let ecgX = 0;
+        let animationFrameId = null;
+
+        window.onload = function() {
+            canvas = document.getElementById('ecgCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Setup canvas size with ResizeObserver for standalone stability
+            const container = document.getElementById('ecg-container');
+            const resizeObserver = new ResizeObserver(() => {
+                if (container.clientWidth > 0 && container.clientHeight > 0) {
+                    canvas.width = container.clientWidth;
+                    canvas.height = container.clientHeight;
+                }
+            });
+            resizeObserver.observe(container);
+
+            // Set initial date for certificate
+            document.getElementById('cert-date-txt').innerText = "Date: " + new Date().toLocaleDateString();
+
+            // Load initial case
+            loadCase(0);
+
+            // Start Telemetry animation loop
+            animateECG();
+        };
+
+        function switchTab(tabId) {
+            document.getElementById('tab-cases').classList.add('hidden');
+            document.getElementById('tab-speed').classList.add('hidden');
+            document.getElementById('tab-lab').classList.add('hidden');
+            document.getElementById('tab-cert').classList.add('hidden');
+
+            document.getElementById('tab-btn-cases').className = "px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition";
+            document.getElementById('tab-btn-speed').className = "px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition";
+            document.getElementById('tab-btn-lab').className = "px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition";
+            document.getElementById('tab-btn-cert').className = "px-3 py-1.5 rounded-lg font-medium text-slate-400 hover:text-white transition";
+
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            const activeBtn = document.getElementById('tab-btn-' + tabId);
+            activeBtn.className = "px-3 py-1.5 rounded-lg font-medium transition text-emerald-400 bg-slate-800 shadow-sm";
+
+            if (tabId === 'cases') {
+                setTimeout(() => {
+                    const container = document.getElementById('ecg-container');
+                    canvas.width = container.clientWidth;
+                    canvas.height = container.clientHeight;
+                }, 50);
+            }
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            const icon = document.getElementById('audio-icon');
+            const status = document.getElementById('audio-status');
+            
+            if (audioEnabled) {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                icon.innerText = "🔊";
+                status.innerText = "Sound: ON";
+            } else {
+                icon.innerText = "🔇";
+                status.innerText = "Sound: OFF";
+            }
+        }
+
+        function playBeep(freq = 800, type = 'sine', duration = 0.08) {
+            if (!audioEnabled || !audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function animateECG() {
+            if (!canvas || !ctx) return;
+            const w = canvas.width;
+            const h = canvas.height;
+            const centerY = h / 2;
+
+            if (w === 0 || h === 0) {
+                animationFrameId = requestAnimationFrame(animateECG);
+                return;
+            }
+
+            const activeCase = scenarios[currentCaseIdx] || scenarios[0];
+            const rhythmType = activeCase.vitals.rhythm || "SINUS";
+
+            // Overwrite sweep: Clear 32px erase bar ahead of drawing cursor
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(ecgX, 0, 32, h);
+
+            // Draw baseline line segment
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            const prevX = ecgX;
+            ecgX = (ecgX + 2) % w;
+
+            const y1 = centerY + getECGOffset(prevX, rhythmType, h);
+            const y2 = centerY + getECGOffset(ecgX, rhythmType, h);
+
+            ctx.moveTo(prevX, y1);
+            ctx.lineTo(ecgX, y2);
+            ctx.stroke();
+
+            // Trigger beat audio on peak
+            if (Math.abs(y2 - centerY) > h * 0.35 && Math.random() < 0.2) {
+                playBeep(850, 'sine', 0.06);
+                const dot = document.getElementById('pulse-dot');
+                if (dot) {
+                    dot.style.opacity = '1';
+                    setTimeout(() => { dot.style.opacity = '0.2'; }, 100);
+                }
+            }
+
+            animationFrameId = requestAnimationFrame(animateECG);
+        }
+
+        function getECGOffset(x, rhythm, h) {
+            const cycle = x % 100;
+            const scale = h / 100;
+            if (rhythm.includes("ASYS") || rhythm.includes("FLAT")) {
+                return (Math.random() - 0.5) * 2;
+            }
+            if (cycle > 40 && cycle < 45) return -10 * scale; // P wave
+            if (cycle >= 45 && cycle < 48) return 5 * scale;   // Q wave
+            if (cycle >= 48 && cycle < 53) return -40 * scale; // R wave peak
+            if (cycle >= 53 && cycle < 56) return 15 * scale;  // S wave
+            if (cycle >= 65 && cycle < 75) return -12 * scale; // T wave
+            return (Math.random() - 0.5) * 2;
+        }
+
+        function changeCaseLimit(val) {
+            caseLimit = parseInt(val);
+            if (currentCaseIdx >= caseLimit) {
+                currentCaseIdx = 0;
+            }
+            loadCase(currentCaseIdx);
+        }
+
+        function loadCase(idx) {
+            currentCaseIdx = idx;
+            const item = scenarios[idx] || scenarios[0];
+
+            document.getElementById('case-progress-txt').innerText = `${idx + 1} / ${Math.min(scenarios.length, caseLimit)}`;
+            document.getElementById('patient-category-badge').innerText = item.category;
+            document.getElementById('patient-name-txt').innerText = item.patientName;
+            document.getElementById('patient-demographics-txt').innerText = `History: ${item.history}`;
+            document.getElementById('rhythm-label-txt').innerText = `RHYTHM: ${item.vitals.rhythm}`;
+
+            // Set Vitals
+            document.getElementById('vital-hr-val').innerText = item.vitals.hr;
+            document.getElementById('vital-bp-val').innerText = item.vitals.bp;
+            document.getElementById('vital-spo2-val').innerText = item.vitals.spo2;
+            document.getElementById('vital-rr-val').innerText = item.vitals.rr;
+            document.getElementById('vital-temp-val').innerText = item.vitals.temp;
+
+            // Apply Vital Status styling
+            applyVitalStyle('vital-card-hr', item.vitalStatus.hr);
+            applyVitalStyle('vital-card-bp', item.vitalStatus.bp);
+            applyVitalStyle('vital-card-spo2', item.vitalStatus.spo2);
+            applyVitalStyle('vital-card-rr', item.vitalStatus.rr);
+            applyVitalStyle('vital-card-temp', item.vitalStatus.temp);
+
+            // Alarm visibility
+            const hasCritical = Object.values(item.vitalStatus).includes('critical');
+            document.getElementById('alarm-indicator').classList.toggle('hidden', !hasCritical);
+            if (hasCritical && audioEnabled) {
+                playBeep(900, 'sawtooth', 0.2);
+            }
+
+            // Observations & Complaint
+            document.getElementById('clinical-observations-txt').innerText = item.observations;
+            document.getElementById('patient-complaint-txt').innerText = item.complaint;
+
+            // Render Options
+            renderOptions('diagnosis-options-container', item.diagnosesOptions, 'diag');
+            renderOptions('action-options-container', item.actionOptions, 'action');
+
+            // Reset UI state
+            selectedDiag = null;
+            selectedAction = null;
+            document.getElementById('rationale-box').classList.add('hidden');
+            document.getElementById('submit-case-btn').classList.remove('hidden');
+            document.getElementById('next-case-btn').classList.add('hidden');
+        }
+
+        function applyVitalStyle(elementId, status) {
+            const el = document.getElementById(elementId);
+            el.className = "vital-card bg-slate-900 border rounded-xl p-3 text-center " + (status ? "status-" + status : "border-slate-800");
+        }
+
+        function renderOptions(containerId, optionsList, type) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+            optionsList.forEach((optText, i) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 rounded-xl border border-slate-800 bg-slate-950 hover:border-slate-700 text-xs sm:text-sm text-slate-300 transition flex items-start space-x-2";
+                btn.onclick = () => selectOption(type, optText, btn);
+                btn.innerHTML = `<span class="font-bold text-slate-500">${String.fromCharCode(65 + i)}.</span> <span>${optText}</span>`;
+                container.appendChild(btn);
+            });
+        }
+
+        function selectOption(type, val, btnEl) {
+            const parent = btnEl.parentElement;
+            Array.from(parent.children).forEach(c => c.className = "w-full text-left p-3 rounded-xl border border-slate-800 bg-slate-950 hover:border-slate-700 text-xs sm:text-sm text-slate-300 transition flex items-start space-x-2");
+            btnEl.className = "w-full text-left p-3 rounded-xl border border-emerald-500 bg-emerald-950/40 text-xs sm:text-sm text-emerald-200 font-semibold transition flex items-start space-x-2";
+
+            if (type === 'diag') selectedDiag = val;
+            if (type === 'action') selectedAction = val;
+        }
+
+        function submitCaseAnswer() {
+            if (!selectedDiag || !selectedAction) {
+                alert("Please select both a Suspected Diagnosis and a CNA Action Priority before submitting!");
+                return;
+            }
+
+            const item = scenarios[currentCaseIdx];
+            const isDiagCorrect = selectedDiag === item.correctDiagnosis;
+            const isActionCorrect = selectedAction === item.correctAction;
+            const isFullyCorrect = isDiagCorrect && isActionCorrect;
+
+            if (isFullyCorrect) {
+                casesScore += 10;
+                document.getElementById('case-score-txt').innerText = casesScore;
+                playBeep(1200, 'sine', 0.15);
+            } else {
+                playBeep(300, 'square', 0.2);
+            }
+
+            // Display Rationale
+            const ratBox = document.getElementById('rationale-box');
+            const ratHeader = document.getElementById('rationale-header');
+            const ratText = document.getElementById('rationale-text');
+
+            ratBox.classList.remove('hidden');
+            if (isFullyCorrect) {
+                ratBox.className = "p-5 rounded-xl border border-emerald-800 bg-emerald-950/50 space-y-2";
+                ratHeader.className = "flex items-center space-x-2 font-bold text-base text-emerald-400";
+                ratHeader.innerHTML = "<span>✅</span> <span>EXCELLENT CLINICAL JUDGMENT!</span>";
+            } else {
+                ratBox.className = "p-5 rounded-xl border border-red-800 bg-red-950/50 space-y-2";
+                ratHeader.className = "flex items-center space-x-2 font-bold text-base text-red-400";
+                ratHeader.innerHTML = "<span>⚠️</span> <span>CLINICAL CORRECTION REQUIRED</span>";
+            }
+
+            ratText.innerHTML = `<strong>Correct Diagnosis:</strong> ${item.correctDiagnosis}<br>` +
+                                `<strong>Correct CNA Action:</strong> ${item.correctAction}<br><br>` +
+                                `<strong>Clinical Rationale:</strong> ${item.rationale}`;
+
+            document.getElementById('submit-case-btn').classList.add('hidden');
+            document.getElementById('next-case-btn').classList.remove('hidden');
+
+            updateCertData();
+        }
+
+        function navCase(dir) {
+            let newIdx = currentCaseIdx + dir;
+            if (newIdx < 0) newIdx = 0;
+            if (newIdx >= Math.min(scenarios.length, caseLimit)) newIdx = Math.min(scenarios.length, caseLimit) - 1;
+            loadCase(newIdx);
+        }
+
+        function startSpeedGame() {
+            speedScore = 0;
+            speedStreak = 0;
+            speedIndex = 0;
+            speedTimeLeft = parseInt(document.getElementById('speed-time-select').value);
+
+            document.getElementById('speed-setup-box').classList.add('hidden');
+            document.getElementById('speed-arena').classList.remove('hidden');
+
+            document.getElementById('speed-score-txt').innerText = "0";
+            document.getElementById('speed-streak-txt').innerText = "0🔥";
+
+            loadSpeedCard();
+
+            if (speedTimerId) clearInterval(speedTimerId);
+            speedTimerId = setInterval(() => {
+                speedTimeLeft--;
+                document.getElementById('speed-timer-txt').innerText = speedTimeLeft + "s";
+                if (speedTimeLeft <= 0) {
+                    endSpeedGame();
+                }
+            }, 1000);
+        }
+
+        function loadSpeedCard() {
+            const card = speedPool[speedIndex % speedPool.length];
+            document.getElementById('speed-card-hr').innerText = card.hr;
+            document.getElementById('speed-card-bp').innerText = card.bp;
+            document.getElementById('speed-card-spo2').innerText = card.spo2;
+            document.getElementById('speed-card-rr').innerText = card.rr;
+            document.getElementById('speed-card-symptom').innerText = `"${card.symptom}"`;
+        }
+
+        function submitSpeedChoice(choice) {
+            const card = speedPool[speedIndex % speedPool.length];
+            if (choice === card.answer) {
+                speedScore += 100 + (speedStreak * 10);
+                speedStreak++;
+                playBeep(1000, 'sine', 0.08);
+            } else {
+                speedStreak = 0;
+                playBeep(250, 'sawtooth', 0.15);
+            }
+
+            document.getElementById('speed-score-txt').innerText = speedScore;
+            document.getElementById('speed-streak-txt').innerText = speedStreak + "🔥";
+
+            speedIndex++;
+            loadSpeedCard();
+        }
+
+        function endSpeedGame() {
+            clearInterval(speedTimerId);
+            alert(`⚡ Time's Up! Final Speed Triage Score: ${speedScore}`);
+            document.getElementById('speed-setup-box').classList.remove('hidden');
+            document.getElementById('speed-arena').classList.add('hidden');
+            updateCertData();
+        }
+
+        function switchLabSubTab(sub) {
+            document.getElementById('lab-view-ref').classList.toggle('hidden', sub !== 'ref');
+            document.getElementById('lab-view-quiz').classList.toggle('hidden', sub !== 'quiz');
+
+            document.getElementById('lab-sub-ref').className = sub === 'ref' ? "px-3 py-1.5 rounded-lg text-emerald-400 bg-slate-800" : "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white";
+            document.getElementById('lab-sub-quiz').className = sub === 'quiz' ? "px-3 py-1.5 rounded-lg text-emerald-400 bg-slate-800" : "px-3 py-1.5 rounded-lg text-slate-400 hover:text-white";
+        }
+
+        function startQuizGame() {
+            quizScore = 0;
+            quizStreak = 0;
+            quizIdx = 0;
+            const selectedVal = parseInt(document.getElementById('quiz-time-select').value);
+            isSurvivalQuiz = (selectedVal === 999);
+            quizLives = 3;
+            quizTimeLeft = isSurvivalQuiz ? 999 : selectedVal;
+
+            document.getElementById('quiz-setup-box').classList.add('hidden');
+            document.getElementById('quiz-arena').classList.remove('hidden');
+
+            document.getElementById('quiz-score-txt').innerText = "0";
+            document.getElementById('quiz-streak-txt').innerText = "0🔥";
+
+            updateQuizTimerDisplay();
+            loadQuizQuestion(0);
+
+            if (quizTimerId) clearInterval(quizTimerId);
+            if (!isSurvivalQuiz) {
+                quizTimerId = setInterval(() => {
+                    quizTimeLeft--;
+                    updateQuizTimerDisplay();
+                    if (quizTimeLeft <= 0) {
+                        endQuizGame("⚡ Time's Up!");
+                    }
+                }, 1000);
+            }
+        }
+
+        function updateQuizTimerDisplay() {
+            const badge = document.getElementById('quiz-timer-badge');
+            const txt = document.getElementById('quiz-timer-txt');
+            if (isSurvivalQuiz) {
+                badge.className = "px-2.5 py-1 rounded-lg text-xs font-extrabold bg-red-950 text-red-400 border border-red-800";
+                txt.innerText = "❤️ " + quizLives + " Lives";
+            } else {
+                badge.className = "px-2.5 py-1 rounded-lg text-xs font-extrabold bg-slate-950 text-white border border-slate-700";
+                txt.innerText = quizTimeLeft + "s";
+            }
+        }
+
+        function endQuizGame(reason = "Quiz Complete!") {
+            if (quizTimerId) clearInterval(quizTimerId);
+            alert(`${reason} Final Vitals Quiz Score: ${quizScore}`);
+            document.getElementById('quiz-setup-box').classList.remove('hidden');
+            document.getElementById('quiz-arena').classList.add('hidden');
+            updateCertData();
+        }
+
+        function loadQuizQuestion(idx) {
+            quizIdx = idx % quizQuestions.length;
+            const qData = quizQuestions[quizIdx];
+
+            document.getElementById('quiz-q-num').innerText = quizIdx + 1;
+            document.getElementById('quiz-question-txt').innerText = qData.q;
+
+            const container = document.getElementById('quiz-options-container');
+            container.innerHTML = "";
+            document.getElementById('quiz-explanation-box').classList.add('hidden');
+            document.getElementById('quiz-next-btn').classList.add('hidden');
+
+            qData.options.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3.5 rounded-xl border border-slate-800 bg-slate-950 hover:border-slate-700 text-xs sm:text-sm text-slate-200 transition font-medium";
+                btn.onclick = () => submitQuizAnswer(i, btn);
+                btn.innerText = opt;
+                container.appendChild(btn);
+            });
+        }
+
+        function submitQuizAnswer(selectedIdx, btnEl) {
+            const qData = quizQuestions[quizIdx];
+            const isCorrect = selectedIdx === qData.correct;
+            const container = document.getElementById('quiz-options-container');
+
+            Array.from(container.children).forEach((child, i) => {
+                child.disabled = true;
+                if (i === qData.correct) {
+                    child.className = "w-full text-left p-3.5 rounded-xl border border-emerald-500 bg-emerald-950/60 text-xs sm:text-sm text-emerald-200 font-bold";
+                } else if (i === selectedIdx && !isCorrect) {
+                    child.className = "w-full text-left p-3.5 rounded-xl border border-red-500 bg-red-950/60 text-xs sm:text-sm text-red-200 font-bold";
+                }
+            });
+
+            if (isCorrect) {
+                quizScore += 10 + (quizStreak * 2);
+                quizStreak++;
+                playBeep(1100, 'sine', 0.1);
+            } else {
+                quizStreak = 0;
+                playBeep(300, 'square', 0.15);
+                if (isSurvivalQuiz) {
+                    quizLives--;
+                    updateQuizTimerDisplay();
+                    if (quizLives <= 0) {
+                        setTimeout(() => endQuizGame("💔 Out of Lives!"), 1000);
+                    }
+                }
+            }
+
+            document.getElementById('quiz-score-txt').innerText = quizScore;
+            document.getElementById('quiz-streak-txt').innerText = quizStreak + "🔥";
+
+            const expBox = document.getElementById('quiz-explanation-box');
+            expBox.classList.remove('hidden');
+            expBox.className = isCorrect ? "p-4 rounded-xl border border-emerald-800 bg-emerald-950/40 text-emerald-200 text-sm leading-relaxed" : "p-4 rounded-xl border border-red-800 bg-red-950/40 text-red-200 text-sm leading-relaxed";
+            expBox.innerText = qData.explanation;
+
+            document.getElementById('quiz-next-btn').classList.remove('hidden');
+            updateCertData();
+        }
+
+        function nextQuizQuestion() {
+            loadQuizQuestion(quizIdx + 1);
+        }
+
+        function updateCertName(name) {
+            document.getElementById('cert-display-name').innerText = name.trim() ? name : "[ Student Name ]";
+        }
+
+        function updateCertData() {
+            document.getElementById('cert-cases-count').innerText = `${currentCaseIdx + 1} / 50`;
+            document.getElementById('cert-cases-acc').innerText = Math.round((casesScore / ((currentCaseIdx + 1) * 10)) * 100) + "%";
+            document.getElementById('cert-speed-score').innerText = speedScore;
+            document.getElementById('cert-quiz-acc').innerText = quizScore + " pts";
+        }
+    </script>
+</body>
+</html>

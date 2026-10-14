@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dragons Health Science - Cardiovascular Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        maroon: {
+                            50: '#fdf2f2',
+                            100: '#fbe4e4',
+                            200: '#f8caca',
+                            300: '#f1a1a1',
+                            400: '#e76c6c',
+                            500: '#d94141',
+                            600: '#c22727',
+                            700: '#7b1113', /* School Maroon */
+                            800: '#5a0c0e',
+                            900: '#4e0f10',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* Light gray background */
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Realistic SVG Heart Styles */
+        .heart-base {
+            fill: #fca5a5;
+            transition: all 0.3s ease;
+        }
+        
+        .heart-part {
+            transition: all 0.2s ease;
+            cursor: pointer;
+            stroke: #1f2937; /* Gray-800 */
+            stroke-width: 1.5;
+            stroke-linejoin: round;
+        }
+        
+        .heart-part:hover {
+            filter: brightness(1.1);
+            stroke: #fcd34d;
+            stroke-width: 3;
+        }
+
+        .heart-part.selected {
+            stroke: #fbbf24;
+            stroke-width: 4;
+            filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.7));
+        }
+
+        /* Realistic Anatomical Colors */
+        .deoxygenated { fill: #3b82f6; } 
+        .oxygenated { fill: #ef4444; }
+        .myocardium { fill: #be123c; } 
+        .lung-tissue { fill: #fce7f3; stroke: #f9a8d4; stroke-width: 2; stroke-dasharray: 4,4; }
+
+        /* Custom Maroon Slider */
+        .maroon-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            background: #d1d5db;
+            border-radius: 5px;
+            outline: none;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .maroon-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #7b1113;
+            cursor: pointer;
+            border: 3px solid #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        
+        .maroon-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+
+        /* Quiz Styles */
+        .option-btn {
+            transition: all 0.2s ease;
+        }
+        .option-btn:hover:not(:disabled) {
+            transform: scale(1.02);
+        }
+        .correct-ans {
+            background-color: #22c55e !important;
+            color: white !important;
+            border-color: #16a34a !important;
+        }
+        .wrong-ans {
+            background-color: #ef4444 !important;
+            color: white !important;
+            border-color: #dc2626 !important;
+        }
+
+        /* Matching Game Styles */
+        .draggable { cursor: grab; user-select: none; }
+        .draggable:active { cursor: grabbing; }
+        .droppable {
+            min-height: 3rem;
+            border: 2px dashed #9ca3af;
+            transition: all 0.2s;
+        }
+        .droppable.drag-over {
+            background-color: #f3f4f6;
+            border-color: #7b1113;
+        }
+        .matched {
+            background-color: #e5e7eb !important; /* gray-200 */
+            border-color: #6b7280 !important; /* gray-500 */
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f3f4f6; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col overflow-hidden bg-gray-100">
+
+    <header class="bg-maroon-700 text-white shadow-lg z-10 relative border-b-4 border-gray-400">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="bg-white p-2 rounded-lg shadow-sm">
+                    <i data-lucide="flame" class="w-8 h-8 text-maroon-700"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold leading-tight tracking-wide">Dragons Health Science</h1>
+                    <p class="text-sm font-medium text-gray-200 flex items-center gap-1">
+                        <i data-lucide="activity" class="w-3 h-3"></i> Cardiovascular System Explorer
+                    </p>
+                </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <nav class="hidden md:flex space-x-2 bg-maroon-800 p-1 rounded-lg border border-maroon-900">
+                <button onclick="switchTab('learn')" id="tab-learn" class="tab-btn px-4 py-2 rounded-md bg-white text-maroon-700 font-bold shadow-sm transition-all text-sm">
+                    Interactive Anatomy
+                </button>
+                <button onclick="switchTab('quiz')" id="tab-quiz" class="tab-btn px-4 py-2 rounded-md text-gray-100 hover:bg-maroon-600 font-semibold transition-all text-sm">
+                    Knowledge Check
+                </button>
+                <button onclick="switchTab('match')" id="tab-match" class="tab-btn px-4 py-2 rounded-md text-gray-100 hover:bg-maroon-600 font-semibold transition-all text-sm">
+                    Vocab Match
+                </button>
+            </nav>
+            
+            <button class="md:hidden p-2 rounded-md hover:bg-maroon-600 transition-colors" onclick="toggleMobileMenu()">
+                <i data-lucide="menu" class="w-6 h-6"></i>
+            </button>
+        </div>
+        
+        <div id="mobile-menu" class="hidden md:hidden bg-maroon-800 border-t border-maroon-600 absolute w-full shadow-lg z-50">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="switchTab('learn'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium bg-maroon-900 text-white">Interactive Anatomy</button>
+                <button onclick="switchTab('quiz'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-200 hover:bg-maroon-700">Knowledge Check</button>
+                <button onclick="switchTab('match'); toggleMobileMenu()" class="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-200 hover:bg-maroon-700">Vocab Match</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 overflow-hidden relative">
+        <div class="max-w-7xl mx-auto h-full p-4 sm:p-6 lg:p-8 flex flex-col">
+
+            <section id="section-learn" class="h-full flex flex-col lg:flex-row gap-6 fade-in overflow-y-auto lg:overflow-hidden">
+                
+                <!-- SVG & Slider Area -->
+                <div class="lg:w-2/3 flex flex-col gap-4">
+                    <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-4 flex-1 flex flex-col items-center justify-center relative min-h-[450px]">
+                        <div class="absolute top-4 left-4 z-10 bg-white/80 p-2 rounded backdrop-blur-sm">
+                            <h2 class="text-xl font-extrabold text-maroon-700 uppercase tracking-wider">Cardiac Anatomy</h2>
+                            <p class="text-xs text-gray-600 font-medium">Click structures to identify • Use slider to trace flow</p>
+                        </div>
+                        
+                        <!-- Realistic Heart & Lungs SVG -->
+                        <svg viewBox="0 0 800 600" class="w-full h-full max-h-[500px] drop-shadow-xl" id="heart-svg">
+                            <!-- Background Lungs for Oxygenation Context -->
+                            <g id="lungs">
+                                <!-- Right Lung (Anatomical) -->
+                                <path class="lung-tissue" d="M 120,150 C 40,200 60,400 150,500 C 250,520 280,300 240,150 C 220,100 180,100 120,150 Z" />
+                                <text x="140" y="300" fill="#db2777" opacity="0.5" font-size="24" font-weight="bold" transform="rotate(-15 140 300)">RIGHT LUNG</text>
+                                
+                                <!-- Left Lung (Anatomical) -->
+                                <path class="lung-tissue" d="M 680,150 C 760,200 740,400 650,500 C 550,520 520,300 560,150 C 580,100 620,100 680,150 Z" />
+                                <text x="560" y="300" fill="#db2777" opacity="0.5" font-size="24" font-weight="bold" transform="rotate(15 560 300)">LEFT LUNG</text>
+                            </g>
+
+                            <!-- Base Heart Muscle (Myocardium outline) -->
+                            <path class="myocardium" d="M 320,250 C 250,300 280,450 360,520 C 420,580 500,550 530,480 C 560,380 520,280 480,250 Z" opacity="0.8"/>
+
+                            <!-- Major Vessels -->
+                            <!-- Superior Vena Cava -->
+                            <path id="part-svc" class="heart-part deoxygenated" d="M 340,60 C 340,60 380,60 390,180 L 330,200 Z" onclick="selectPart('svc')" />
+                            <!-- Inferior Vena Cava -->
+                            <path id="part-ivc" class="heart-part deoxygenated" d="M 340,480 L 390,460 L 380,580 L 330,580 Z" onclick="selectPart('ivc')" />
+                            
+                            <!-- Aorta (Arching over) -->
+                            <path id="part-aorta" class="heart-part oxygenated" d="M 420,220 C 400,100 480,40 520,120 C 540,160 520,250 520,250 L 460,250 C 460,250 490,180 480,140 C 470,100 440,120 450,200 Z" onclick="selectPart('aorta')" />
+                            
+                            <!-- Pulmonary Artery (Splitting to lungs) -->
+                            <path id="part-pa" class="heart-part deoxygenated" d="M 420,250 C 380,200 350,150 250,180 L 250,220 C 300,200 380,220 400,270 Z" onclick="selectPart('pa')" />
+                            <path class="heart-part deoxygenated" d="M 420,250 C 450,200 500,160 580,180 L 580,220 C 520,200 480,220 440,270 Z" onclick="selectPart('pa')" />
+
+                            <!-- Pulmonary Veins (Returning from lungs) -->
+                            <path id="part-pv" class="heart-part oxygenated" d="M 220,280 L 320,300 L 320,330 L 220,310 Z" onclick="selectPart('pv')" />
+                            <path class="heart-part oxygenated" d="M 580,280 L 480,300 L 480,330 L 580,310 Z" onclick="selectPart('pv')" />
+
+                            <!-- Chambers -->
+                            <!-- Right Atrium -->
+                            <path id="part-ra" class="heart-part deoxygenated" d="M 330,200 C 280,250 290,350 360,370 L 400,280 Z" onclick="selectPart('ra')" />
+                            <!-- Right Ventricle -->
+                            <path id="part-rv" class="heart-part deoxygenated" d="M 360,370 C 330,480 400,520 460,450 L 410,290 Z" onclick="selectPart('rv')" />
+                            <!-- Left Atrium -->
+                            <path id="part-la" class="heart-part oxygenated" d="M 480,240 C 530,260 530,330 480,350 L 430,290 Z" onclick="selectPart('la')" />
+                            <!-- Left Ventricle (Thicker) -->
+                            <path id="part-lv" class="heart-part oxygenated" d="M 480,350 C 550,400 520,530 460,450 L 420,330 Z" onclick="selectPart('lv')" />
+                            <!-- Septum -->
+                            <path id="part-septum" class="heart-part myocardium" d="M 400,280 L 430,290 L 460,450 L 410,290 Z" onclick="selectPart('septum')" />
+
+                            <!-- HIDDEN PATH FOR BLOOD ANIMATION (Critical for slider) -->
+                            <path id="blood-flow-path" fill="none" stroke="none" 
+                                d="M 360,80 
+                                   L 360,250 
+                                   C 360,300 340,330 380,380 
+                                   C 420,400 440,350 420,300 
+                                   C 400,250 380,200 300,190 
+                                   C 200,180 180,350 220,450 
+                                   C 280,500 350,400 460,310 
+                                   C 500,280 500,400 480,450 
+                                   C 450,500 450,300 480,200 
+                                   C 500,100 450,50 400,200 
+                                   C 350,350 350,450 350,550" />
+                                   
+                            <!-- The Animated Blood Drop -->
+                            <g id="blood-particle-group" class="hidden pointer-events-none">
+                                <circle id="blood-dot" r="14" fill="#3b82f6" cx="0" cy="0" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.5))" stroke="#ffffff" stroke-width="2" />
+                                <text id="blood-o2-tag" x="0" y="0" font-size="10" font-weight="bold" fill="white" text-anchor="middle" dominant-baseline="middle">CO2</text>
+                            </g>
+                        </svg>
+                        
+                        <!-- Toggle Labels Button -->
+                        <button onclick="toggleLabels()" id="toggle-labels-btn" class="absolute top-4 right-4 bg-gray-800 text-white px-3 py-1.5 rounded-full text-xs font-bold hover:bg-gray-700 transition flex items-center gap-1 shadow-md">
+                            <i data-lucide="eye" class="w-4 h-4"></i> Labels
+                        </button>
+                        
+                        <div id="labels-overlay" class="hidden absolute inset-0 pointer-events-none"></div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-extrabold text-maroon-700 flex items-center gap-2">
+                                <i data-lucide="git-pull-request" class="text-maroon-500"></i> Trace the Blood Flow
+                            </h3>
+                            <span class="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded">Interactive Path</span>
+                        </div>
+                        
+                        <input type="range" id="flow-slider" min="0" max="100" value="0" class="maroon-slider mb-4" oninput="updateBloodFlow(this.value)">
+                        
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 min-h-[80px] flex items-center">
+                            <p id="flow-status-text" class="text-gray-700 text-sm leading-relaxed font-medium">
+                                Move the slider above to trace the path of a blood cell through the cardiovascular system. Watch how it picks up oxygen in the lungs!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Info Panel -->
+                <div class="lg:w-1/3 flex flex-col gap-4">
+                    <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-6 flex-1 flex flex-col h-full border-t-4 border-t-maroon-600">
+                        <div id="info-default" class="h-full flex flex-col items-center justify-center text-center text-gray-500">
+                            <div class="bg-gray-100 p-4 rounded-full mb-4">
+                                <i data-lucide="mouse-pointer-click" class="w-10 h-10 text-gray-400"></i>
+                            </div>
+                            <p class="text-lg font-bold text-gray-700 mb-2">Select a structure</p>
+                            <p class="text-sm">Click on any part of the heart diagram to view its physiological details, function, and role.</p>
+                        </div>
+                        
+                        <div id="info-content" class="hidden h-full flex flex-col">
+                            <div class="flex items-center gap-3 mb-4 pb-4 border-b border-gray-100">
+                                <div id="info-color" class="w-4 h-4 rounded-full shadow-inner"></div>
+                                <h3 id="info-title" class="text-2xl font-extrabold text-gray-800">Part Name</h3>
+                            </div>
+                            
+                            <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-5">
+                                <div>
+                                    <h4 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Blood Status</h4>
+                                    <p id="info-blood" class="text-sm font-bold inline-block px-3 py-1 rounded shadow-sm">Oxygenated</p>
+                                </div>
+                                
+                                <div>
+                                    <h4 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Primary Function</h4>
+                                    <p id="info-function" class="text-gray-700 leading-relaxed text-sm font-medium">Description goes here.</p>
+                                </div>
+
+                                <div class="bg-maroon-50 p-4 rounded-xl border border-maroon-100 relative overflow-hidden">
+                                    <i data-lucide="flame" class="absolute -bottom-2 -right-2 w-16 h-16 text-maroon-100 opacity-50"></i>
+                                    <h4 class="text-xs font-black text-maroon-800 flex items-center gap-1 mb-2 relative z-10">
+                                        <i data-lucide="info" class="w-4 h-4"></i> Dragon Fact
+                                    </h4>
+                                    <p id="info-fact" class="text-maroon-900 text-sm font-medium relative z-10">Fact goes here.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-800 text-white rounded-2xl shadow-md p-5 border-b-4 border-b-maroon-600">
+                        <h3 class="font-bold mb-3 flex justify-between items-center text-sm uppercase tracking-wider">
+                            <span>Exploration Mastery</span>
+                            <span id="exploration-count" class="text-maroon-400 font-black bg-gray-900 px-2 py-1 rounded">0/10</span>
+                        </h3>
+                        <div class="w-full bg-gray-700 rounded-full h-3 shadow-inner">
+                            <div id="exploration-bar" class="bg-maroon-500 h-3 rounded-full transition-all duration-500 shadow-sm" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-quiz" class="hidden h-full flex flex-col fade-in">
+                <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-6 sm:p-10 flex-1 max-w-3xl mx-auto w-full flex flex-col border-t-4 border-t-maroon-700">
+                    
+                    <div id="quiz-intro" class="flex-1 flex flex-col items-center justify-center text-center">
+                        <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6 text-maroon-700 shadow-inner">
+                            <i data-lucide="clipboard-list" class="w-12 h-12"></i>
+                        </div>
+                        <h2 class="text-4xl font-extrabold text-gray-800 mb-4">Knowledge Check</h2>
+                        <p class="text-gray-600 mb-8 max-w-md font-medium">Test your mastery of the cardiovascular system based on TN Health Science standards.</p>
+                        <button onclick="startQuiz()" class="bg-maroon-700 hover:bg-maroon-800 text-white font-bold py-4 px-10 rounded-full shadow-lg transform transition hover:-translate-y-1 text-lg">
+                            Begin Assessment
+                        </button>
+                    </div>
+
+                    <div id="quiz-active" class="hidden flex-1 flex flex-col">
+                        <div class="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
+                            <span class="text-sm font-black text-gray-400 uppercase tracking-widest">Question <span id="q-current" class="text-maroon-700">1</span> / <span id="q-total">5</span></span>
+                            <div class="flex gap-2" id="quiz-progress-dots"></div>
+                        </div>
+                        
+                        <div class="flex-1 flex flex-col justify-center">
+                            <h3 id="quiz-question" class="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-10 leading-snug">Question text goes here?</h3>
+                            <div id="quiz-options" class="space-y-4">
+                                <!-- Options generated via JS -->
+                            </div>
+                        </div>
+                        
+                        <div class="mt-8 flex justify-end">
+                            <button id="btn-next-q" onclick="nextQuestion()" class="hidden bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-8 rounded-xl shadow-md transition-colors flex items-center gap-2">
+                                Next Question <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="quiz-results" class="hidden flex-1 flex flex-col items-center justify-center text-center">
+                        <div id="result-icon-container" class="w-28 h-28 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                            <!-- Icon JS -->
+                        </div>
+                        <h2 class="text-4xl font-extrabold text-gray-800 mb-2">Assessment Complete!</h2>
+                        <p class="text-gray-600 mb-8 text-lg font-medium">You scored <span id="result-score" class="font-black text-2xl text-maroon-700"></span> out of <span id="result-total" class="font-black text-2xl text-gray-800"></span>.</p>
+                        
+                        <div class="bg-gray-50 rounded-2xl p-6 w-full max-w-md mb-10 border border-gray-200 shadow-sm">
+                            <p id="result-message" class="text-gray-700 font-bold text-lg">Message</p>
+                        </div>
+
+                        <div class="flex gap-4">
+                            <button onclick="startQuiz()" class="bg-gray-200 text-gray-800 hover:bg-gray-300 font-bold py-3 px-8 rounded-xl transition-colors shadow-sm">
+                                Retry Quiz
+                            </button>
+                            <button onclick="switchTab('learn')" class="bg-maroon-700 hover:bg-maroon-800 text-white font-bold py-3 px-8 rounded-xl transition-colors shadow-md">
+                                Return to Anatomy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="section-match" class="hidden h-full flex flex-col fade-in">
+                <div class="bg-white rounded-2xl shadow-md border border-gray-200 p-6 flex-1 flex flex-col overflow-hidden border-t-4 border-t-maroon-700">
+                    <div class="mb-6 flex justify-between items-end border-b border-gray-100 pb-4">
+                        <div>
+                            <h2 class="text-3xl font-extrabold text-gray-800">Vocabulary Match</h2>
+                            <p class="text-gray-500 font-medium mt-1">Drag the physiological terms to their correct definitions. Check your answers when finished.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="checkAllMatches()" class="text-sm bg-maroon-700 text-white hover:bg-maroon-800 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors shadow-sm">
+                                <i data-lucide="check-square" class="w-4 h-4"></i> Check Answers
+                            </button>
+                            <button onclick="showHelp()" class="text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
+                                <i data-lucide="life-buoy" class="w-4 h-4"></i> Help
+                            </button>
+                            <button onclick="resetMatchGame()" class="text-sm bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col lg:flex-row gap-8 overflow-hidden">
+                        <div class="lg:w-1/3 bg-gray-50 p-5 rounded-2xl border border-gray-200 flex flex-col h-1/3 lg:h-full shadow-inner">
+                            <h3 class="font-extrabold text-gray-700 mb-4 uppercase tracking-wider text-sm flex items-center gap-2">
+                                <i data-lucide="layers" class="text-maroon-600"></i> Terms Bank
+                            </h3>
+                            <div id="terms-container" class="flex-1 overflow-y-auto custom-scrollbar flex flex-wrap gap-3 content-start min-h-[100px]">
+                                <!-- Draggables JS -->
+                            </div>
+                        </div>
+
+                        <div class="lg:w-2/3 flex-1 overflow-y-auto custom-scrollbar pr-2">
+                            <div id="definitions-container" class="space-y-4 pb-4">
+                                <!-- Droppables JS -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="match-status" class="fixed bottom-6 right-6 bg-white border-2 border-gray-300 text-gray-800 px-8 py-4 rounded-xl shadow-2xl transform translate-y-32 opacity-0 transition-all duration-300 flex items-center gap-4 z-50">
+                    <div id="match-status-icon" class="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
+                        <i data-lucide="info" class="w-6 h-6 text-gray-600"></i>
+                    </div>
+                    <div>
+                        <span id="match-status-title" class="font-extrabold block text-lg">Status</span>
+                        <span id="match-status-msg" class="font-medium text-gray-600 text-sm">Message</span>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        const state = {
+            currentTab: 'learn',
+            exploredParts: new Set(),
+            quiz: { currentQIndex: 0, score: 0, active: false }
+        };
+
+        const heartData = {
+            'ra': {
+                name: 'Right Atrium',
+                color: 'bg-blue-500',
+                bloodType: 'Deoxygenated',
+                function: 'Receives oxygen-poor blood from the body via the superior and inferior vena cava and pumps it into the right ventricle.',
+                fact: 'The walls of the atria are thinner than the ventricles because they only need to pump blood a short distance to the lower chambers.'
+            },
+            'rv': {
+                name: 'Right Ventricle',
+                color: 'bg-blue-600',
+                bloodType: 'Deoxygenated',
+                function: 'Receives deoxygenated blood from the right atrium and pumps it to the lungs through the pulmonary artery for oxygenation.',
+                fact: 'It forms most of the anterior (front) surface of the heart.'
+            },
+            'la': {
+                name: 'Left Atrium',
+                color: 'bg-red-500',
+                bloodType: 'Oxygenated',
+                function: 'Receives oxygen-rich blood from the lungs via the pulmonary veins and pumps it into the left ventricle.',
+                fact: 'This chamber holds blood just before it enters the most powerful pumping chamber of the heart.'
+            },
+            'lv': {
+                name: 'Left Ventricle',
+                color: 'bg-red-600',
+                bloodType: 'Oxygenated',
+                function: 'Pumps oxygenated blood out through the aorta to the rest of the body. It is the thickest and most muscular chamber.',
+                fact: 'The left ventricle works the hardest and has walls up to three times thicker than the right ventricle.'
+            },
+            'svc': {
+                name: 'Superior Vena Cava',
+                color: 'bg-blue-400',
+                bloodType: 'Deoxygenated',
+                function: 'A large vein that carries deoxygenated blood from the upper half of the body (head, neck, arms) to the right atrium.',
+                fact: 'It is the second largest vein in the human body.'
+            },
+            'ivc': {
+                name: 'Inferior Vena Cava',
+                color: 'bg-blue-400',
+                bloodType: 'Deoxygenated',
+                function: 'A large vein that carries deoxygenated blood from the lower half of the body to the right atrium.',
+                fact: 'It is the largest vein in the human body.'
+            },
+            'pa': {
+                name: 'Pulmonary Artery',
+                color: 'bg-blue-500',
+                bloodType: 'Deoxygenated',
+                function: 'Carries deoxygenated blood from the right ventricle to the lungs.',
+                fact: 'It is the ONLY artery in the adult body that carries deoxygenated blood (because it carries blood AWAY from the heart).'
+            },
+            'pv': {
+                name: 'Pulmonary Vein',
+                color: 'bg-red-400',
+                bloodType: 'Oxygenated',
+                function: 'Carries oxygenated blood from the lungs back to the left atrium of the heart.',
+                fact: 'These are the ONLY veins in the adult body that carry oxygenated blood.'
+            },
+            'aorta': {
+                name: 'Aorta',
+                color: 'bg-red-600',
+                bloodType: 'Oxygenated',
+                function: 'The main and largest artery in the body, it carries oxygen-rich blood from the left ventricle to the rest of the body.',
+                fact: 'The aorta is about the diameter of a garden hose in a typical adult.'
+            },
+            'septum': {
+                name: 'Septum',
+                color: 'bg-pink-600',
+                bloodType: 'Myocardium (Muscle)',
+                function: 'A solid muscular wall that separates the right and left sides of the heart, preventing the mixing of oxygenated and deoxygenated blood.',
+                fact: 'A "hole in the heart" is often a congenital defect in this septal wall.'
+            }
+        };
+
+        const quizQuestions = [
+            { q: "Which blood vessels carry blood AWAY from the heart?", options: ["Veins", "Arteries", "Capillaries", "Vena Cava"], answer: 1 },
+            { q: "The right side of the heart is responsible for pumping:", options: ["Oxygenated blood to the body", "Deoxygenated blood to the body", "Oxygenated blood to the lungs", "Deoxygenated blood to the lungs"], answer: 3 },
+            { q: "What is the function of the heart valves?", options: ["To produce red blood cells", "To prevent backward flow of blood", "To pump blood faster", "To mix oxygenated and deoxygenated blood"], answer: 1 },
+            { q: "Which chamber of the heart has the thickest muscular wall?", options: ["Right Atrium", "Right Ventricle", "Left Atrium", "Left Ventricle"], answer: 3 },
+            { q: "What is the only artery that carries deoxygenated blood?", options: ["Aorta", "Coronary Artery", "Pulmonary Artery", "Carotid Artery"], answer: 2 }
+        ];
+
+        const matchingData = [
+            { id: 'm1', term: 'Erythrocytes', definition: 'Red blood cells; responsible for carrying oxygen.' },
+            { id: 'm2', term: 'Leukocytes', definition: 'White blood cells; part of the immune system to fight infection.' },
+            { id: 'm3', term: 'Thrombocytes', definition: 'Platelets; cell fragments responsible for blood clotting.' },
+            { id: 'm4', term: 'Plasma', definition: 'The liquid portion of blood, mostly water, carrying nutrients and waste.' },
+            { id: 'm5', term: 'Systole', definition: 'The phase of the heartbeat when the heart muscle contracts and pumps blood.' },
+            { id: 'm6', term: 'Diastole', definition: 'The phase of the heartbeat when the heart muscle relaxes and chambers fill with blood.' },
+            { id: 'm7', term: 'Capillaries', definition: 'Tiny, thin-walled vessels where gas and nutrient exchange occurs with tissues.' }
+        ];
+
+        // --- STREAMING_CHUNK:Tab Navigation & UI functions ---
+        function switchTab(tabId) {
+            state.currentTab = tabId;
+            document.getElementById('section-learn').classList.add('hidden');
+            document.getElementById('section-quiz').classList.add('hidden');
+            document.getElementById('section-match').classList.add('hidden');
+            document.getElementById(`section-${tabId}`).classList.remove('hidden');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = "tab-btn px-4 py-2 rounded-md text-gray-100 hover:bg-maroon-600 font-semibold transition-all text-sm";
+            });
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            if(activeBtn) {
+                activeBtn.className = "tab-btn px-4 py-2 rounded-md bg-white text-maroon-700 font-bold shadow-sm transition-all text-sm";
+            }
+            
+            lucide.createIcons();
+            if (tabId === 'match' && document.getElementById('terms-container').children.length === 0) initMatchGame();
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+
+        // --- STREAMING_CHUNK:Interactive Anatomy Logic ---
+        let labelsVisible = false;
+
+        function selectPart(partId) {
+            document.querySelectorAll('.heart-part').forEach(el => el.classList.remove('selected'));
+            
+            // Handle multiple paths with same ID (like pulmonary veins)
+            const parts = document.querySelectorAll(`[onclick="selectPart('${partId}')"]`);
+            parts.forEach(p => p.classList.add('selected'));
+
+            const data = heartData[partId];
+            if (!state.exploredParts.has(partId)) {
+                state.exploredParts.add(partId);
+                updateProgress();
+            }
+
+            document.getElementById('info-default').classList.add('hidden');
+            document.getElementById('info-content').classList.remove('hidden');
+            document.getElementById('info-title').textContent = data.name;
+            
+            const colorDot = document.getElementById('info-color');
+            colorDot.className = `w-4 h-4 rounded-full shadow-inner ${data.color}`;
+            
+            const bloodEl = document.getElementById('info-blood');
+            bloodEl.textContent = data.bloodType;
+            if (data.bloodType === 'Oxygenated') {
+                bloodEl.className = "text-sm font-black uppercase tracking-wider bg-red-100 text-red-700 border border-red-200 inline-block px-3 py-1 rounded shadow-sm";
+            } else if (data.bloodType === 'Deoxygenated') {
+                bloodEl.className = "text-sm font-black uppercase tracking-wider bg-blue-100 text-blue-700 border border-blue-200 inline-block px-3 py-1 rounded shadow-sm";
+            } else {
+                bloodEl.className = "text-sm font-black uppercase tracking-wider bg-pink-100 text-pink-700 border border-pink-200 inline-block px-3 py-1 rounded shadow-sm";
+            }
+
+            document.getElementById('info-function').textContent = data.function;
+            document.getElementById('info-fact').textContent = data.fact;
+        }
+
+        function updateProgress() {
+            const total = Object.keys(heartData).length;
+            const current = state.exploredParts.size;
+            document.getElementById('exploration-count').textContent = `${current}/${total}`;
+            const percent = (current / total) * 100;
+            document.getElementById('exploration-bar').style.width = `${percent}%`;
+            
+            if (current === total) {
+                document.getElementById('exploration-bar').classList.remove('bg-maroon-500');
+                document.getElementById('exploration-bar').classList.add('bg-green-500');
+            }
+        }
+
+        function toggleLabels() {
+            labelsVisible = !labelsVisible;
+            const overlay = document.getElementById('labels-overlay');
+            const btn = document.getElementById('toggle-labels-btn');
+            
+            if (labelsVisible) {
+                overlay.classList.remove('hidden');
+                btn.innerHTML = `<i data-lucide="eye-off" class="w-4 h-4"></i> Hide Labels`;
+                if (overlay.innerHTML.trim() === '') generateLabels();
+            } else {
+                overlay.classList.add('hidden');
+                btn.innerHTML = `<i data-lucide="eye" class="w-4 h-4"></i> Labels`;
+            }
+            lucide.createIcons();
+        }
+
+        function generateLabels() {
+            const overlay = document.getElementById('labels-overlay');
+            const labelPos = {
+                'svc': { top: '20%', left: '42%' },
+                'ivc': { top: '85%', left: '42%' },
+                'ra':  { top: '45%', left: '40%' },
+                'rv':  { top: '65%', left: '48%' },
+                'pa':  { top: '35%', left: '35%' },
+                'pv':  { top: '48%', left: '75%' },
+                'la':  { top: '48%', left: '60%' },
+                'lv':  { top: '75%', left: '62%' },
+                'aorta': { top: '15%', left: '58%' },
+                'septum': { top: '60%', left: '55%' }
+            };
+
+            for (const [id, pos] of Object.entries(labelPos)) {
+                const data = heartData[id];
+                const label = document.createElement('div');
+                label.className = "absolute bg-white/90 backdrop-blur-md text-[10px] sm:text-xs font-black px-2 py-1 rounded shadow-lg border border-gray-300 text-gray-800 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none uppercase tracking-wider";
+                label.style.top = pos.top;
+                label.style.left = pos.left;
+                label.textContent = data.name;
+                overlay.appendChild(label);
+            }
+        }
+
+        // --- STREAMING_CHUNK:Blood Flow Animation Logic ---
+        function updateBloodFlow(val) {
+            const path = document.getElementById('blood-flow-path');
+            const particleGroup = document.getElementById('blood-particle-group');
+            const dot = document.getElementById('blood-dot');
+            const tag = document.getElementById('blood-o2-tag');
+            const statusText = document.getElementById('flow-status-text');
+
+            if(!path || !particleGroup) return;
+            particleGroup.classList.remove('hidden');
+
+            const totalLen = path.getTotalLength();
+            // Map 0-100 to path length
+            const pt = path.getPointAtLength((val / 100) * totalLen);
+
+            // Move the group containing dot and text
+            particleGroup.setAttribute('transform', `translate(${pt.x}, ${pt.y})`);
+
+            // Update visuals and text based on physiological phase
+            if (val < 20) {
+                // Entering RA/RV (Deoxygenated)
+                dot.setAttribute('fill', '#3b82f6'); 
+                dot.setAttribute('stroke', '#1d4ed8');
+                tag.textContent = "CO2";
+                statusText.innerHTML = "<strong class='text-blue-700 uppercase'>Step 1:</strong> Deoxygenated blood from the body enters the <strong>Right Atrium</strong> via the Vena Cava, then drops into the <strong>Right Ventricle</strong>.";
+            } else if (val >= 20 && val < 50) {
+                // To Lungs (Transitioning)
+                const ratio = (val - 20) / 30; // 0 to 1
+                // Transition color roughly from blue to purple
+                dot.setAttribute('fill', '#8b5cf6');
+                dot.setAttribute('stroke', '#6d28d9');
+                tag.textContent = "O2...";
+                statusText.innerHTML = "<strong class='text-purple-700 uppercase'>Step 2:</strong> The Right Ventricle pumps blood through the <strong>Pulmonary Artery</strong> to the <strong>Lungs</strong>. Here, carbon dioxide is exchanged for fresh oxygen.";
+            } else if (val >= 50 && val < 80) {
+                // From Lungs to LA/LV (Oxygenated)
+                dot.setAttribute('fill', '#ef4444');
+                dot.setAttribute('stroke', '#b91c1c');
+                tag.textContent = "O2";
+                statusText.innerHTML = "<strong class='text-red-700 uppercase'>Step 3:</strong> Oxygen-rich blood returns via the <strong>Pulmonary Veins</strong> into the <strong>Left Atrium</strong>, then flows into the powerful <strong>Left Ventricle</strong>.";
+            } else {
+                // Out the Aorta (Oxygenated)
+                dot.setAttribute('fill', '#ef4444');
+                dot.setAttribute('stroke', '#b91c1c');
+                tag.textContent = "O2";
+                statusText.innerHTML = "<strong class='text-maroon-700 uppercase'>Step 4:</strong> The thick-walled Left Ventricle vigorously pumps the oxygenated blood through the <strong>Aorta</strong> to nourish the entire body!";
+            }
+        }
+
+
+        // --- STREAMING_CHUNK:Quiz Engine Logic ---
+        function startQuiz() {
+            state.quiz.currentQIndex = 0;
+            state.quiz.score = 0;
+            state.quiz.active = true;
+            
+            document.getElementById('quiz-intro').classList.add('hidden');
+            document.getElementById('quiz-results').classList.add('hidden');
+            document.getElementById('quiz-active').classList.remove('hidden');
+            document.getElementById('btn-next-q').classList.add('hidden');
+            
+            document.getElementById('q-total').textContent = quizQuestions.length;
+            generateProgressDots();
+            loadQuestion();
+        }
+
+        function generateProgressDots() {
+            const container = document.getElementById('quiz-progress-dots');
+            container.innerHTML = '';
+            for(let i=0; i<quizQuestions.length; i++) {
+                const dot = document.createElement('div');
+                dot.id = `dot-${i}`;
+                dot.className = "w-2.5 h-2.5 rounded-full bg-gray-200";
+                container.appendChild(dot);
+            }
+        }
+
+        function loadQuestion() {
+            const q = quizQuestions[state.quiz.currentQIndex];
+            document.getElementById('q-current').textContent = state.quiz.currentQIndex + 1;
+            document.getElementById('quiz-question').textContent = q.q;
+            
+            document.getElementById(`dot-${state.quiz.currentQIndex}`).className = "w-2.5 h-2.5 rounded-full bg-maroon-600 shadow-sm";
+            
+            const optionsContainer = document.getElementById('quiz-options');
+            optionsContainer.innerHTML = '';
+            
+            q.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = "option-btn w-full text-left p-5 rounded-xl border-2 border-gray-200 hover:border-maroon-400 hover:bg-maroon-50 text-gray-700 font-bold bg-white text-lg shadow-sm";
+                btn.textContent = opt;
+                btn.onclick = () => handleAnswer(index, btn);
+                optionsContainer.appendChild(btn);
+            });
+            
+            document.getElementById('btn-next-q').classList.add('hidden');
+        }
+
+        function handleAnswer(selectedIndex, btnElement) {
+            if (!state.quiz.active) return;
+            state.quiz.active = false; 
+            
+            const q = quizQuestions[state.quiz.currentQIndex];
+            const isCorrect = selectedIndex === q.answer;
+            
+            const allBtns = document.getElementById('quiz-options').children;
+            for (let b of allBtns) {
+                b.disabled = true;
+                b.classList.remove('hover:border-maroon-400', 'hover:bg-maroon-50');
+                b.classList.add('opacity-70');
+            }
+            
+            if (isCorrect) {
+                state.quiz.score++;
+                btnElement.classList.add('correct-ans', 'opacity-100');
+                document.getElementById(`dot-${state.quiz.currentQIndex}`).classList.replace('bg-maroon-600', 'bg-green-500');
+            } else {
+                btnElement.classList.add('wrong-ans', 'opacity-100');
+                allBtns[q.answer].classList.add('correct-ans', 'opacity-100'); 
+            }
+            
+            const nextBtn = document.getElementById('btn-next-q');
+            nextBtn.classList.remove('hidden');
+            if (state.quiz.currentQIndex === quizQuestions.length - 1) {
+                nextBtn.innerHTML = `Finish Assessment <i data-lucide="check-circle" class="w-5 h-5"></i>`;
+                lucide.createIcons();
+            }
+        }
+
+        function nextQuestion() {
+            state.quiz.currentQIndex++;
+            if (state.quiz.currentQIndex < quizQuestions.length) {
+                state.quiz.active = true;
+                loadQuestion();
+            } else {
+                showResults();
+            }
+        }
+
+        function showResults() {
+            document.getElementById('quiz-active').classList.add('hidden');
+            document.getElementById('quiz-results').classList.remove('hidden');
+            
+            document.getElementById('result-score').textContent = state.quiz.score;
+            document.getElementById('result-total').textContent = quizQuestions.length;
+            
+            const percentage = state.quiz.score / quizQuestions.length;
+            const iconContainer = document.getElementById('result-icon-container');
+            const msg = document.getElementById('result-message');
+            
+            if (percentage >= 0.8) {
+                iconContainer.className = "w-28 h-28 rounded-full flex items-center justify-center mb-6 bg-green-100 text-green-600 border-4 border-green-200 shadow-lg";
+                iconContainer.innerHTML = '<i data-lucide="award" class="w-14 h-14"></i>';
+                msg.textContent = "Excellent work, Dragon! You have a solid grasp of the cardiovascular system.";
+            } else if (percentage >= 0.6) {
+                iconContainer.className = "w-28 h-28 rounded-full flex items-center justify-center mb-6 bg-yellow-100 text-yellow-600 border-4 border-yellow-200 shadow-lg";
+                iconContainer.innerHTML = '<i data-lucide="star" class="w-14 h-14"></i>';
+                msg.textContent = "Good job! A quick review of the interactive anatomy might help you perfect your score.";
+            } else {
+                iconContainer.className = "w-28 h-28 rounded-full flex items-center justify-center mb-6 bg-maroon-100 text-maroon-700 border-4 border-maroon-200 shadow-lg";
+                iconContainer.innerHTML = '<i data-lucide="book-open" class="w-14 h-14"></i>';
+                msg.textContent = "Keep practicing! Spend some more time reviewing the anatomical structures and blood flow path.";
+            }
+            lucide.createIcons();
+        }
+
+        // --- STREAMING_CHUNK:Drag and Drop Vocabulary Matching Logic ---
+        let draggedTermId = null;
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function initMatchGame() {
+            const termsContainer = document.getElementById('terms-container');
+            const defsContainer = document.getElementById('definitions-container');
+            termsContainer.innerHTML = ''; defsContainer.innerHTML = '';
+
+            const shuffledTerms = shuffleArray([...matchingData]);
+            const shuffledDefs = shuffleArray([...matchingData]);
+
+            shuffledTerms.forEach(item => {
+                const termEl = document.createElement('div');
+                termEl.className = "draggable bg-white border-2 border-gray-300 px-4 py-2 rounded-xl shadow-sm font-extrabold text-gray-700 hover:border-maroon-400 hover:text-maroon-700 transition-colors cursor-grab";
+                termEl.draggable = true;
+                termEl.id = `term-${item.id}`;
+                termEl.dataset.originalId = item.id;
+                termEl.textContent = item.term;
+                
+                termEl.addEventListener('dragstart', handleDragStart);
+                termEl.addEventListener('dragend', handleDragEnd);
+                
+                termEl.addEventListener('touchstart', handleTouchStart, {passive: false});
+                termEl.addEventListener('touchmove', handleTouchMove, {passive: false});
+                termEl.addEventListener('touchend', handleTouchEnd);
+
+                termsContainer.appendChild(termEl);
+            });
+
+            shuffledDefs.forEach(item => {
+                const defContainer = document.createElement('div');
+                defContainer.className = "bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col gap-3";
+                
+                const defText = document.createElement('p');
+                defText.className = "text-sm text-gray-700 font-medium leading-relaxed";
+                defText.textContent = item.definition;
+                
+                const dropZone = document.createElement('div');
+                dropZone.className = "droppable rounded-xl flex items-center justify-center p-3 bg-gray-50 border-2 border-dashed border-gray-400 min-h-[3rem] transition-colors relative";
+                dropZone.dataset.matchId = item.id;
+                
+                const placeholder = document.createElement('span');
+                placeholder.className = "text-gray-400 text-sm font-bold pointer-events-none uppercase tracking-wider absolute";
+                placeholder.textContent = "Drop term here";
+                dropZone.appendChild(placeholder);
+
+                dropZone.addEventListener('dragover', handleDragOver);
+                dropZone.addEventListener('dragleave', handleDragLeave);
+                dropZone.addEventListener('drop', handleDrop);
+
+                defContainer.appendChild(defText);
+                defContainer.appendChild(dropZone);
+                defsContainer.appendChild(defContainer);
+            });
+        }
+
+        function resetMatchGame() {
+            initMatchGame();
+            hideStatusToast();
+        }
+
+        function handleDragStart(e) {
+            draggedTermId = this.id;
+            this.classList.add('opacity-50');
+            e.dataTransfer.setData('text/plain', this.id);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('opacity-50');
+            draggedTermId = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            this.classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            const termId = e.dataTransfer.getData('text/plain');
+            placeTermInZone(termId, this);
+        }
+
+        function placeTermInZone(termElementId, dropZone) {
+            const termEl = document.getElementById(termElementId);
+            if (!termEl) return;
+
+            // If the drop zone already has a term, move the existing term back to the bank
+            const existingTerm = dropZone.querySelector('.draggable');
+            if (existingTerm) {
+                document.getElementById('terms-container').appendChild(existingTerm);
+                existingTerm.classList.remove('w-full', 'text-center', 'border-transparent', 'shadow-none');
+                existingTerm.classList.add('border-gray-300', 'shadow-sm');
+            }
+
+            // Move the new term into the drop zone
+            dropZone.appendChild(termEl);
+            
+            // Hide the placeholder text
+            const placeholder = dropZone.querySelector('span');
+            if(placeholder) placeholder.style.display = 'none';
+
+            // Style the term to look like it belongs in the slot
+            termEl.classList.remove('border-gray-300', 'shadow-sm');
+            termEl.classList.add('w-full', 'text-center', 'border-transparent', 'shadow-none', 'bg-transparent');
+            
+            // Clean up any help/validation highlighting
+            termEl.classList.remove('text-green-700', 'bg-green-100');
+            dropZone.classList.remove('border-green-500', 'bg-green-50');
+        }
+
+        // Touch Support
+        let activeTouchElement = null;
+        let originalParent = null;
+        
+        function handleTouchStart(e) {
+            activeTouchElement = this;
+            draggedTermId = this.id;
+            originalParent = this.parentNode;
+            this.style.opacity = '0.8';
+            this.style.position = 'absolute';
+            this.style.zIndex = 1000;
+            // Append to body to ensure it drags over everything
+            document.body.appendChild(this); 
+            moveElementToTouch(e.touches[0]);
+        }
+        
+        function handleTouchMove(e) {
+            if (!activeTouchElement) return;
+            e.preventDefault();
+            moveElementToTouch(e.touches[0]);
+            
+            const touch = e.touches[0];
+            const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            document.querySelectorAll('.droppable').forEach(zone => zone.classList.remove('drag-over'));
+            
+            if (elemBelow) {
+                const dropZone = elemBelow.closest('.droppable');
+                // Allow dropping into the terms bank as well
+                const termsBank = elemBelow.closest('#terms-container');
+                if (dropZone) dropZone.classList.add('drag-over');
+                else if (termsBank) termsBank.classList.add('bg-gray-100');
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            if (!activeTouchElement) return;
+            activeTouchElement.style.opacity = '1';
+            activeTouchElement.style.position = 'static';
+            activeTouchElement.style.zIndex = 'auto';
+            
+            const touch = e.changedTouches[0];
+            const elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+            document.querySelectorAll('.droppable').forEach(zone => zone.classList.remove('drag-over'));
+            document.getElementById('terms-container').classList.remove('bg-gray-100');
+            
+            let placed = false;
+            if (elemBelow) {
+                const dropZone = elemBelow.closest('.droppable');
+                const termsBank = elemBelow.closest('#terms-container');
+                
+                if (dropZone) {
+                    placeTermInZone(activeTouchElement.id, dropZone);
+                    placed = true;
+                } else if (termsBank) {
+                     // Return to bank explicitly
+                     termsBank.appendChild(activeTouchElement);
+                     activeTouchElement.classList.remove('w-full', 'text-center', 'border-transparent', 'shadow-none', 'bg-transparent', 'text-green-700', 'bg-green-100');
+                     activeTouchElement.classList.add('border-gray-300', 'shadow-sm', 'bg-white');
+                     placed = true;
+                     
+                     // Restore placeholder if original parent was a dropzone
+                     if(originalParent && originalParent.classList.contains('droppable')) {
+                         const ph = originalParent.querySelector('span');
+                         if(ph) ph.style.display = 'block';
+                     }
+                }
+            }
+            
+            if (!placed && originalParent) {
+                originalParent.appendChild(activeTouchElement);
+            }
+            
+            activeTouchElement = null; draggedTermId = null; originalParent = null;
+        }
+        
+        function moveElementToTouch(touch) {
+            if(activeTouchElement) {
+                const rect = activeTouchElement.getBoundingClientRect();
+                activeTouchElement.style.left = (touch.clientX - rect.width / 2) + 'px';
+                activeTouchElement.style.top = (touch.clientY - rect.height / 2) + 'px';
+            }
+        }
+
+        // Allows clicking a term in a slot to return it to the bank
+        document.addEventListener('click', function(e) {
+            const term = e.target.closest('.draggable');
+            if (term && term.parentElement.classList.contains('droppable')) {
+                const dropZone = term.parentElement;
+                document.getElementById('terms-container').appendChild(term);
+                
+                // Reset styling
+                term.classList.remove('w-full', 'text-center', 'border-transparent', 'shadow-none', 'bg-transparent', 'text-green-700', 'bg-green-100');
+                term.classList.add('border-gray-300', 'shadow-sm', 'bg-white');
+                dropZone.classList.remove('border-green-500', 'bg-green-50');
+                
+                // Show placeholder again
+                const placeholder = dropZone.querySelector('span');
+                if(placeholder) placeholder.style.display = 'block';
+            }
+        });
+
+        function checkAllMatches() {
+            const dropZones = document.querySelectorAll('.droppable');
+            let correctCount = 0;
+            let totalFilled = 0;
+
+            dropZones.forEach(zone => {
+                const term = zone.querySelector('.draggable');
+                if (term) {
+                    totalFilled++;
+                    const termIdNum = term.dataset.originalId;
+                    const requiredId = zone.dataset.matchId;
+                    if (termIdNum === requiredId) correctCount++;
+                }
+            });
+
+            if (totalFilled < matchingData.length) {
+                showStatusToast('warning', 'Incomplete', `You have only placed ${totalFilled} out of ${matchingData.length} terms.`);
+            } else if (correctCount === matchingData.length) {
+                showStatusToast('success', 'Outstanding!', 'All Dragon terminology matched correctly.');
+            } else {
+                showStatusToast('info', 'Check Complete', `You got ${correctCount} out of ${matchingData.length} correct.`);
+            }
+        }
+
+        function showHelp() {
+            const dropZones = document.querySelectorAll('.droppable');
+            let helpGiven = false;
+
+            dropZones.forEach(zone => {
+                const term = zone.querySelector('.draggable');
+                if (term) {
+                    const termIdNum = term.dataset.originalId;
+                    const requiredId = zone.dataset.matchId;
+                    
+                    if (termIdNum === requiredId) {
+                        // Highlight correct ones
+                        term.classList.add('text-green-700', 'font-black');
+                        zone.classList.add('border-green-500', 'bg-green-50');
+                        helpGiven = true;
+                    } else {
+                        // Ensure incorrect ones are not highlighted
+                        term.classList.remove('text-green-700', 'font-black');
+                        zone.classList.remove('border-green-500', 'bg-green-50');
+                    }
+                }
+            });
+            
+            if(helpGiven) {
+                showStatusToast('info', 'Help Applied', 'Correct matches have been highlighted in green.');
+            } else {
+                showStatusToast('warning', 'No Matches', 'None of the placed terms are currently correct.');
+            }
+        }
+
+        function showStatusToast(type, title, message) {
+            const toast = document.getElementById('match-status');
+            const iconContainer = document.getElementById('match-status-icon');
+            const titleEl = document.getElementById('match-status-title');
+            const msgEl = document.getElementById('match-status-msg');
+
+            titleEl.textContent = title;
+            msgEl.textContent = message;
+
+            // Reset classes
+            toast.className = "fixed bottom-6 right-6 bg-white border-2 px-8 py-4 rounded-xl shadow-2xl transform transition-all duration-300 flex items-center gap-4 z-50 translate-y-0 opacity-100";
+            iconContainer.className = "w-10 h-10 rounded-full flex items-center justify-center";
+
+            if (type === 'success') {
+                toast.classList.add('border-green-400');
+                iconContainer.classList.add('bg-green-100', 'text-green-600');
+                iconContainer.innerHTML = '<i data-lucide="party-popper" class="w-6 h-6"></i>';
+                titleEl.classList.add('text-green-700');
+            } else if (type === 'warning') {
+                toast.classList.add('border-yellow-400');
+                iconContainer.classList.add('bg-yellow-100', 'text-yellow-600');
+                iconContainer.innerHTML = '<i data-lucide="alert-triangle" class="w-6 h-6"></i>';
+                titleEl.classList.add('text-yellow-700');
+            } else {
+                toast.classList.add('border-blue-400');
+                iconContainer.classList.add('bg-blue-100', 'text-blue-600');
+                iconContainer.innerHTML = '<i data-lucide="info" class="w-6 h-6"></i>';
+                titleEl.classList.add('text-blue-700');
+            }
+
+            lucide.createIcons();
+
+            // Auto-hide after a delay
+            setTimeout(hideStatusToast, 4000);
+        }
+
+        function hideStatusToast() {
+            const toast = document.getElementById('match-status');
+            toast.classList.remove('translate-y-0', 'opacity-100');
+            toast.classList.add('translate-y-32', 'opacity-0');
+        }
+
+    </script>
+</body>
+</html>

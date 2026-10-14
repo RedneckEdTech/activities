@@ -1,0 +1,2490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OSHA Forklift Physics & Certification Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            tech: ['Chakra Petch', 'sans-serif'],
+          },
+          colors: {
+            safety: {
+              yellow: '#FACC15',
+              amber: '#F59E0B',
+              orange: '#EA580C',
+              red: '#DC2626',
+              green: '#16A34A',
+              dark: '#0B0F17',
+              panel: '#151D2A',
+              card: '#1E293B',
+              stripe: '#EAB308'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background-color: #0b0f17;
+      color: #e2e8f0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    .hazard-stripes {
+      background: repeating-linear-gradient(
+        45deg,
+        #f59e0b,
+        #f59e0b 14px,
+        #111827 14px,
+        #111827 28px
+      );
+    }
+
+    /* Range slider custom styling */
+    input[type=range] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #334155;
+      height: 8px;
+      border-radius: 4px;
+      outline: none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #facc15;
+      cursor: pointer;
+      border: 2px solid #0f172a;
+      box-shadow: 0 0 10px rgba(250, 204, 21, 0.6);
+      transition: transform 0.1s ease;
+    }
+    input[type=range]::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 0.9; filter: drop-shadow(0 0 14px rgba(239, 68, 68, 0.8)); }
+      50% { opacity: 0.4; filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.3)); }
+    }
+    .danger-pulse {
+      animation: pulse-glow 1.2s infinite ease-in-out;
+    }
+
+    /* Certificate styling and print layout */
+    .cert-border {
+      border: 8px double #d97706;
+      box-shadow: inset 0 0 0 2px #451a03;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #certificatePrintZone, #certificatePrintZone * {
+        visibility: visible !important;
+      }
+      #certificatePrintZone {
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 24px !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 99999 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans overflow-x-hidden">
+
+  <header class="bg-slate-900 border-b border-slate-800 sticky top-0 z-40 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center text-slate-950 font-tech font-bold text-2xl shadow-md shadow-amber-500/30">
+          ▲
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-tech text-lg sm:text-2xl font-bold tracking-wide text-white uppercase">
+              Forklift Dynamics Lab
+            </h1>
+            <span class="px-2 py-0.5 text-xs font-mono font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded">
+              OSHA 1910.178
+            </span>
+          </div>
+          <p class="text-xs text-slate-400">Industrial Manufacturing Certification Simulator • Stability Triangle, Pitch & Speed Moment</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button id="audioToggleBtn" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md border border-slate-700 transition">
+          <span id="audioIcon">🔊</span>
+          <span id="audioLabel">Audio SFX: ON</span>
+        </button>
+        <button id="openQuizBtn" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-md font-tech tracking-wider uppercase shadow transition">
+          <span>📋 Certification Quiz</span>
+        </button>
+      </div>
+    </div>
+    <div class="h-1.5 w-full hazard-stripes opacity-90"></div>
+  </header>
+
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-12 gap-4">
+    
+    <!-- LEFT COLUMN: Dual Viewport & Stability Triangle -->
+    <div class="lg:col-span-7 flex flex-col space-y-4">
+      
+      <!-- Primary Simulation Viewport Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-2xl flex flex-col">
+        <!-- Viewport Switcher & Live Status -->
+        <div class="px-4 py-2.5 bg-slate-950/90 border-b border-slate-800 flex flex-wrap items-center justify-between text-xs gap-2">
+          <div class="flex items-center space-x-3">
+            <span class="flex items-center space-x-1 font-mono text-emerald-400">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span class="font-bold">LIVE PHYSICS</span>
+            </span>
+            <div class="inline-flex rounded-md p-0.5 bg-slate-800">
+              <button id="viewProfileBtn" class="px-2.5 py-1 rounded text-xs font-medium bg-amber-500 text-slate-950 font-semibold shadow transition">
+                Side Elevation (Pitch/Lift)
+              </button>
+              <button id="viewIsoBtn" class="px-2.5 py-1 rounded text-xs font-medium text-slate-400 hover:text-white transition">
+                Dynamic Course (Turn/Roll)
+              </button>
+            </div>
+          </div>
+
+          <!-- Stability Status Pill -->
+          <div id="stabilityBadge" class="px-3 py-1 rounded-full font-mono text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 flex items-center space-x-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span id="stabilityStatusText">STABLE CONDITION</span>
+          </div>
+        </div>
+
+        <!-- Simulation Canvas Container -->
+        <div class="relative w-full aspect-[16/10] bg-slate-950 overflow-hidden flex items-center justify-center">
+          <canvas id="simCanvas" class="w-full h-full block cursor-crosshair"></canvas>
+          
+          <!-- On-Canvas Telemetry Overlay -->
+          <div class="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/70 rounded-lg p-2.5 text-[11px] font-mono space-y-1 shadow-lg pointer-events-none z-10">
+            <div class="text-slate-400 flex justify-between gap-4">
+              <span>RATED CAPACITY:</span>
+              <span class="text-amber-400 font-bold">4,000 lbs @ 24"</span>
+            </div>
+            <div class="text-slate-400 flex justify-between gap-4">
+              <span>LOAD MOMENT:</span>
+              <span id="hudMoment" class="text-white font-bold">60,000 in-lbs</span>
+            </div>
+            <div class="text-slate-400 flex justify-between gap-4">
+              <span>LATERAL FORCE:</span>
+              <span id="hudLateralG" class="text-white font-bold">0.05 G</span>
+            </div>
+            <div class="text-slate-400 flex justify-between gap-4">
+              <span>COMBINED CG HT:</span>
+              <span id="hudCGHeight" class="text-white font-bold">25.4 in</span>
+            </div>
+          </div>
+
+          <!-- Dynamic Live Simulation Progress Bar -->
+          <div id="simProgressBarContainer" class="hidden absolute top-3 right-3 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-lg px-3 py-2 text-xs font-mono shadow-2xl z-20 flex flex-col gap-1 w-56">
+            <div class="flex justify-between text-[11px]">
+              <span id="simProgressLabel" class="text-amber-400 font-bold">TRANSIT IN PROGRESS...</span>
+              <span id="simProgressPct" class="text-white">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
+              <div id="simProgressBar" class="bg-amber-500 h-full rounded-full w-0 transition-all duration-75"></div>
+            </div>
+            <div id="simSubLabel" class="text-[10px] text-slate-400 truncate">Testing dynamic stability...</div>
+          </div>
+
+          <!-- Dynamic Hazard Alert Modal Banner -->
+          <div id="hazardAlertBanner" class="hidden absolute inset-x-4 top-1/2 -translate-y-1/2 bg-red-950/95 border-2 border-red-500 rounded-xl p-4 shadow-2xl backdrop-blur-lg flex items-start space-x-3 text-left z-30">
+            <div class="text-3xl mt-0.5">⚠️</div>
+            <div class="flex-1">
+              <h3 id="hazardTitle" class="font-tech text-base sm:text-lg font-bold text-red-400 uppercase tracking-wide">
+                CATASTROPHIC LATERAL ROLLOVER DETECTED
+              </h3>
+              <p id="hazardDesc" class="text-xs text-slate-200 mt-1 leading-relaxed">
+                Centrifugal force threw the combined center of gravity outside the stability envelope.
+              </p>
+              <div id="hazardOshaTip" class="mt-2 text-[11px] font-mono text-amber-300 bg-red-900/60 p-1.5 rounded border border-red-700/60 inline-block">
+                OSHA Guideline: Never turn with elevated forks or at excessive speed. Stay buckled in cab.
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic Success Alert Banner -->
+          <div id="successAlertBanner" class="hidden absolute inset-x-4 top-1/2 -translate-y-1/2 bg-emerald-950/95 border-2 border-emerald-500 rounded-xl p-4 shadow-2xl backdrop-blur-lg flex items-start space-x-3 text-left z-30">
+            <div class="text-3xl mt-0.5">✅</div>
+            <div class="flex-1">
+              <h3 class="font-tech text-base sm:text-lg font-bold text-emerald-400 uppercase tracking-wide">
+                OSHA PASS: STABLE TRANSIT VERIFIED
+              </h3>
+              <p id="successDesc" class="text-xs text-slate-200 mt-1 leading-relaxed">
+                The product and truck remained balanced inside the OSHA Stability Triangle throughout acceleration, transit, and braking.
+              </p>
+              <div class="mt-2 text-[11px] font-mono text-emerald-300 bg-emerald-900/60 p-1.5 rounded border border-emerald-700/60 inline-block">
+                Compliant with OSHA 1910.178: Safe fork travel height, proper backward mast tilt, and controlled cornering speed.
+              </div>
+            </div>
+          </div>
+
+          <!-- Simulation Action Buttons -->
+          <div class="absolute bottom-3 right-3 flex items-center space-x-2 z-20">
+            <button id="runManeuverBtn" class="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-tech font-bold text-sm tracking-wider uppercase rounded-lg shadow-lg shadow-amber-500/30 flex items-center space-x-2 transition active:scale-95 cursor-pointer">
+              <span id="runBtnIcon">▶</span>
+              <span id="runBtnText">RUN TEST TRANSITION</span>
+            </button>
+            <button id="resetParamsBtn" title="Reset to Safe Standard" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg border border-slate-700 text-sm transition">
+              ↺
+            </button>
+          </div>
+        </div>
+
+        <!-- Real-time Forensic Advice Bar -->
+        <div class="px-4 py-2.5 bg-slate-950 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+          <div class="flex items-center space-x-2">
+            <span class="text-amber-500 font-bold">ℹ OPERATOR RULE:</span>
+            <span id="forensicTip" class="text-slate-300">
+              Maintain load tilted backward 4°-6° and forks 4-6 inches from floor when travelling.
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+          <div class="flex items-center space-x-2">
+            <span class="w-3 h-3 bg-amber-500 rounded-sm transform rotate-45"></span>
+            <h2 class="font-tech text-base font-bold tracking-wider text-white uppercase">
+              OSHA Stability Triangle Telemetry
+            </h2>
+          </div>
+          <span class="text-xs text-slate-400 font-mono">B-Point Steer Pivot & Front Drive Fulcrum</span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+          <!-- Triangle Canvas Graph -->
+          <div class="md:col-span-6 bg-slate-950 border border-slate-800/80 rounded-lg p-2 relative flex items-center justify-center h-52">
+            <canvas id="triangleCanvas" width="300" height="200" class="max-w-full h-auto"></canvas>
+            <span class="absolute bottom-1.5 left-2 text-[10px] font-mono text-slate-500">
+              Steer Axle Pivot (Rear)
+            </span>
+            <span class="absolute top-1.5 left-1/2 -translate-x-1/2 text-[10px] font-mono text-slate-500">
+              Drive Axle Fulcrum (Front)
+            </span>
+          </div>
+
+          <!-- Stability Indicators & Gauge Metrics -->
+          <div class="md:col-span-6 space-y-3 text-xs">
+            <div>
+              <div class="flex justify-between font-mono mb-1">
+                <span class="text-slate-400">Combined CG Safety Margin:</span>
+                <span id="cgMarginPct" class="font-bold text-emerald-400">85% (SAFE)</span>
+              </div>
+              <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                <div id="cgMarginBar" class="h-full bg-emerald-500 rounded-full transition-all duration-300" style="width: 85%;"></div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 font-mono">
+              <div class="bg-slate-800/60 p-2 rounded border border-slate-700/50">
+                <div class="text-[10px] text-slate-400">LONGITUDINAL CG:</div>
+                <div id="statLongCG" class="font-bold text-white text-xs">24.2 in (Behind Axle)</div>
+              </div>
+              <div class="bg-slate-800/60 p-2 rounded border border-slate-700/50">
+                <div class="text-[10px] text-slate-400">LATERAL DEVIATION:</div>
+                <div id="statLatCG" class="font-bold text-white text-xs">0.8 in (Limit 15.2")</div>
+              </div>
+            </div>
+
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Counterbalanced forklifts rest on a <strong>three-point suspension</strong>. As long as the combined CG stays inside this yellow triangle, the truck cannot tip over.
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="lg:col-span-5 flex flex-col space-y-4">
+      
+      <!-- Preset Training Scenarios Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="font-tech text-base font-bold tracking-wider text-amber-400 uppercase flex items-center space-x-2">
+            <span>🎯 Certified Student Challenges</span>
+          </h2>
+          <span class="text-[11px] font-mono text-slate-400">OSHA Scenarios</span>
+        </div>
+        <p class="text-xs text-slate-400 mb-3">
+          Select real manufacturing challenges to observe physics and test decisions:
+        </p>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button class="scenario-btn p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition cursor-pointer" data-scenario="safeTravel">
+            <div class="font-tech font-bold text-xs text-emerald-400">1. Proper Travel Mode</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Low forks, tilted back, steady 4.5 mph.</div>
+          </button>
+
+          <button class="scenario-btn p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition cursor-pointer" data-scenario="highMastTurn">
+            <div class="font-tech font-bold text-xs text-red-400">2. Elevated Mast Turn</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Forks up 95", 8.5 mph sharp 50° turn.</div>
+          </button>
+
+          <button class="scenario-btn p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition cursor-pointer" data-scenario="overExtended">
+            <div class="font-tech font-bold text-xs text-orange-400">3. Over-Extended Load</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">4,800 lbs @ 42" extended fork tips.</div>
+          </button>
+
+          <button class="scenario-btn p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left transition cursor-pointer" data-scenario="forwardPitchDescent">
+            <div class="font-tech font-bold text-xs text-yellow-400">4. Forward Tilt Spill</div>
+            <div class="text-[10px] text-slate-400 mt-0.5">Forks tilted forward -8° on rapid stop.</div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Controls Card -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl space-y-4 flex-1">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h2 class="font-tech text-base font-bold tracking-wider text-white uppercase flex items-center space-x-2">
+            <span>⚙ Operational Parameters</span>
+          </h2>
+          <span class="text-xs text-slate-400 font-mono">Real-Time Adjustments</span>
+        </div>
+
+        <div class="space-y-3.5">
+          <!-- 1. Load Weight -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                <span>📦 Load Weight</span>
+              </span>
+              <span class="font-mono font-bold text-amber-400"><span id="valWeight">2,500</span> lbs</span>
+            </div>
+            <input id="sliderWeight" type="range" min="0" max="6000" step="100" value="2500" class="w-full">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-0.5 font-mono">
+              <span>0 lbs (Empty)</span>
+              <span class="text-amber-500 font-bold">4,000 lbs (Rated Cap)</span>
+              <span>6,000 lbs (Overload)</span>
+            </div>
+          </div>
+
+          <!-- 2. Load Center Distance -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                <span>📏 Load Center Distance</span>
+              </span>
+              <span class="font-mono font-bold text-amber-400"><span id="valLoadCenter">24</span> inches</span>
+            </div>
+            <input id="sliderLoadCenter" type="range" min="12" max="48" step="1" value="24" class="w-full">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-0.5 font-mono">
+              <span>12" (Against backrest)</span>
+              <span class="text-amber-500 font-bold">24" (OSHA Standard)</span>
+              <span>48" (Fork Tips)</span>
+            </div>
+          </div>
+
+          <!-- 3. Mast Pitch / Tilt Angle -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                <span>📐 Mast Pitch / Tilt Angle</span>
+              </span>
+              <span class="font-mono font-bold text-amber-400"><span id="valPitch">+4</span>° <span id="pitchLabelText">(Tilt Back)</span></span>
+            </div>
+            <input id="sliderPitch" type="range" min="-10" max="12" step="1" value="4" class="w-full">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-0.5 font-mono">
+              <span class="text-red-400">-10° (Dangerous Forward Tilt)</span>
+              <span>0° (Level)</span>
+              <span class="text-emerald-400">+12° (Full Back Tilt)</span>
+            </div>
+          </div>
+
+          <!-- 4. Mast Lift Height -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                <span>⬆ Carriage Lift Height</span>
+              </span>
+              <span class="font-mono font-bold text-amber-400"><span id="valHeight">6</span> inches</span>
+            </div>
+            <input id="sliderHeight" type="range" min="4" max="130" step="2" value="6" class="w-full">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-0.5 font-mono">
+              <span class="text-emerald-400">4-6" (Safe Travel Height)</span>
+              <span>60" (Mid Lift)</span>
+              <span class="text-red-400">130" (High Stacking)</span>
+            </div>
+          </div>
+
+          <!-- 5. Travel Speed -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                <span>🏎 Vehicle Travel Speed</span>
+              </span>
+              <span class="font-mono font-bold text-amber-400"><span id="valSpeed">4.5</span> MPH</span>
+            </div>
+            <input id="sliderSpeed" type="range" min="0" max="14" step="0.5" value="4.5" class="w-full">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-0.5 font-mono">
+              <span>0 MPH (Parked)</span>
+              <span class="text-emerald-400">5 MPH (Warehouse Safe Limit)</span>
+              <span class="text-red-400">14 MPH (Dangerous)</span>
+            </div>
+          </div>
+
+          <!-- 6. Steering Turn Angle -->
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="font-semibold text-slate-300 flex items-center gap-1.5">
+                <span>🔄 Steering Angle (Turn Sharpness)</span>
+              </span>
+              <span class="font-mono font-bold text-amber-400"><span id="valTurn">20</span>°</span>
+            </div>
+            <input id="sliderTurn" type="range" min="0" max="75" step="1" value="20" class="w-full">
+            <div class="flex justify-between text-[10px] text-slate-500 mt-0.5 font-mono">
+              <span>0° (Straight Path)</span>
+              <span>35° (Moderate Turn)</span>
+              <span class="text-red-400">75° (Pivot Spin)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-Time OSHA Math Formula Card -->
+        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-[11px] font-mono space-y-1">
+        <div class="text-amber-400 font-bold">OSHA CAPACITY FORMULA:</div>
+        <div class="text-slate-300">
+          Actual Allowable Capacity = Rated Cap × (Rated Center ÷ Actual Center)
+        </div>
+        <div class="text-slate-400">
+          Allowable capacity at <span id="formulaCenter">24"</span> center: 
+          <span id="formulaCapacity" class="font-bold text-emerald-400">4,000 lbs</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+  <!-- Comprehensive 20-Question Quiz Modal -->
+  <div id="quizModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="bg-slate-900 border border-slate-800 max-w-2xl w-full max-h-[92vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden">
+      <!-- Quiz Header -->
+      <div class="px-5 py-3.5 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-lg border border-amber-500/40">
+            🎓
+          </div>
+          <div>
+            <h3 class="font-tech text-base sm:text-lg font-bold text-white uppercase tracking-wider">
+              OSHA Forklift Operator Certification Exam
+            </h3>
+            <p class="text-[11px] text-slate-400 font-mono">20 Questions • 70% Required to Earn Certificate (14/20)</p>
+          </div>
+        </div>
+        <button id="closeQuizBtn" class="text-slate-400 hover:text-white text-2xl font-bold p-1 leading-none cursor-pointer">✕</button>
+      </div>
+
+      <!-- Quiz Body Scrollable -->
+      <div class="p-5 overflow-y-auto flex-1 space-y-4">
+        <div id="quizActiveContainer" class="space-y-4">
+          <div class="flex justify-between items-center text-xs font-mono">
+            <span id="quizProgress" class="text-amber-400 font-bold">QUESTION 1 OF 20</span>
+            <div class="flex items-center space-x-3">
+              <span id="quizScore" class="text-emerald-400 font-bold">Current Score: 0/0</span>
+              <span id="quizPercent" class="text-slate-400">0%</span>
+            </div>
+          </div>
+
+          <!-- Question Progress Bar -->
+          <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+            <div id="quizProgressTrack" class="bg-amber-500 h-full w-0 transition-all duration-200"></div>
+          </div>
+
+          <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700/60">
+            <p id="quizQuestion" class="text-sm font-semibold text-slate-100 leading-relaxed">
+              Loading question...
+            </p>
+          </div>
+
+          <div id="quizOptions" class="space-y-2.5 text-xs">
+            <!-- Populated by JavaScript -->
+          </div>
+
+          <div id="quizExplanation" class="hidden p-3.5 rounded-xl text-xs leading-relaxed border transition-all"></div>
+        </div>
+
+        <!-- Quiz Completion Screen -->
+        <div id="quizResultContainer" class="hidden space-y-5 text-center py-2">
+          <div id="resultIcon" class="text-5xl">🏆</div>
+          <div>
+            <h4 id="resultHeading" class="font-tech text-xl font-bold uppercase tracking-wide text-emerald-400">
+              Exam Passed: Certification Ready!
+            </h4>
+            <p id="resultSummary" class="text-xs text-slate-300 mt-1 max-w-md mx-auto">
+              You correctly answered 18 out of 20 questions (90%). You have demonstrated understanding of OSHA 29 CFR 1910.178 standards.
+            </p>
+          </div>
+
+          <!-- Certificate Claim Form -->
+          <div id="certClaimBox" class="bg-slate-950 p-4 rounded-xl border border-slate-800 max-w-md mx-auto text-left space-y-3 shadow-inner">
+            <div class="flex items-center space-x-2 text-xs font-tech font-bold uppercase tracking-wider text-amber-400">
+              <span>📜 Issue Certificate of Completion</span>
+            </div>
+            <div>
+              <label class="block text-[11px] font-mono text-slate-300 mb-1">Student Full Name:</label>
+              <input id="studentNameInput" type="text" placeholder="e.g., Jordan Miller" value="Certified Student Operator" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-400 outline-none">
+            </div>
+            <div>
+              <label class="block text-[11px] font-mono text-slate-300 mb-1">School / Class / Facility (Optional):</label>
+              <input id="studentSchoolInput" type="text" placeholder="e.g., Industrial Manufacturing Dept. - Period 2" value="Industrial Manufacturing & Safety Technology" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-400 outline-none">
+            </div>
+            <button id="generateCertBtn" class="w-full py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-tech font-bold text-xs uppercase tracking-wider rounded-lg shadow-lg shadow-amber-500/20 transition cursor-pointer">
+              🎖️ View & Save Official Certificate
+            </button>
+          </div>
+
+          <div id="failRetryBox" class="hidden max-w-md mx-auto p-4 bg-red-950/40 border border-red-500/40 rounded-xl space-y-3">
+            <p class="text-xs text-red-300">
+              A minimum score of 70% (14 correct answers) is required to receive the Introduction to Forklift Safety Certificate. Review the stability triangle and travel rules, then try again!
+            </p>
+            <button id="retryQuizBtn" class="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-tech font-bold text-xs uppercase tracking-wider rounded-lg transition cursor-pointer">
+              ↺ Retake Examination
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quiz Footer -->
+      <div class="px-5 py-3 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0">
+        <span class="text-[11px] text-slate-500 font-mono">OSHA 29 CFR 1910.178 Standards</span>
+        <button id="quizNextBtn" class="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-tech font-bold text-xs uppercase tracking-wider rounded-lg transition hidden cursor-pointer">
+          Next Question ➔
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Certificate Display & Export Modal -->
+  <div id="certificateModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-6 hidden overflow-y-auto">
+    <div class="max-w-4xl w-full flex flex-col space-y-4 my-auto">
+      
+      <!-- Top Actions Bar (Hidden when printed) -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-900 border border-slate-800 px-4 py-3 rounded-xl shadow-lg no-print">
+        <div class="flex items-center space-x-2">
+          <span class="text-amber-400 text-xl font-bold">📜</span>
+          <span class="font-tech text-sm sm:text-base font-bold text-white uppercase tracking-wide">
+            Certificate of Completion Ready
+          </span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="printCertBtn" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-tech font-bold text-xs uppercase tracking-wider rounded-lg shadow transition flex items-center space-x-1.5 cursor-pointer">
+            <span>🖨️</span>
+            <span>Print / Save PDF</span>
+          </button>
+          <button id="downloadCertImageBtn" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/40 font-tech font-bold text-xs uppercase tracking-wider rounded-lg transition flex items-center space-x-1.5 cursor-pointer">
+            <span>💾</span>
+            <span>Download PNG</span>
+          </button>
+          <button id="closeCertModalBtn" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 text-sm cursor-pointer" title="Close Certificate">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      <!-- Printable Certificate Card -->
+      <div id="certificatePrintZone" class="bg-gradient-to-b from-amber-50 via-white to-amber-50/70 text-slate-900 p-6 sm:p-10 rounded-2xl shadow-2xl border-4 border-amber-600 relative overflow-hidden cert-border">
+        
+        <!-- Corner Embellishments -->
+        <div class="absolute top-2 left-2 text-amber-700 text-xs font-mono">★ ★ ★</div>
+        <div class="absolute top-2 right-2 text-amber-700 text-xs font-mono">★ ★ ★</div>
+        <div class="absolute bottom-2 left-2 text-amber-700 text-xs font-mono">★ ★ ★</div>
+        <div class="absolute bottom-2 right-2 text-amber-700 text-xs font-mono">★ ★ ★</div>
+
+        <!-- Subtle Watermark Background -->
+        <div class="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none select-none font-tech font-black text-8xl text-slate-950 transform -rotate-12">
+          OSHA 1910.178
+        </div>
+
+        <div class="relative z-10 text-center space-y-4">
+          <!-- Certificate Header -->
+          <div class="space-y-1">
+            <div class="inline-flex items-center space-x-2 px-3 py-1 bg-amber-100 border border-amber-300 rounded-full text-[11px] font-mono font-bold text-amber-900 uppercase tracking-widest">
+              <span>Industrial Manufacturing & Safety Education</span>
+            </div>
+            <h1 class="font-tech text-2xl sm:text-4xl font-black text-slate-950 tracking-wider uppercase mt-1">
+              Certificate of Completion
+            </h1>
+            <p class="text-xs sm:text-sm font-semibold tracking-widest text-amber-800 uppercase font-mono">
+              Introduction to Powered Industrial Truck & Forklift Safety
+            </p>
+          </div>
+
+          <!-- Divider Ribbon -->
+          <div class="flex items-center justify-center space-x-3 max-w-md mx-auto">
+            <div class="h-0.5 flex-1 bg-amber-400"></div>
+            <div class="w-3 h-3 bg-amber-600 rotate-45"></div>
+            <div class="h-0.5 flex-1 bg-amber-400"></div>
+          </div>
+
+          <!-- Certificate Recipient -->
+          <div class="py-2 space-y-1">
+            <p class="text-xs font-serif italic text-slate-600">This certifies that</p>
+            <h2 id="certStudentName" class="font-tech text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-wide underline decoration-amber-500 decoration-2 underline-offset-4">
+              Jordan Miller
+            </h2>
+            <p id="certStudentOrg" class="text-xs text-slate-600 font-medium">
+              Industrial Manufacturing & Technology Program
+            </p>
+          </div>
+
+          <!-- Certification Description -->
+          <p class="text-xs sm:text-sm text-slate-700 max-w-xl mx-auto leading-relaxed">
+            has successfully completed training on <strong>OSHA 29 CFR 1910.178</strong> powered industrial truck safety principles, including the <strong>Stability Triangle, dynamic longitudinal and lateral load moments, carriage elevation safety, and transit stability protocols</strong>, achieving a verified passing grade.
+          </p>
+
+          <!-- Exam Metrics Banner -->
+          <div class="grid grid-cols-3 max-w-lg mx-auto bg-amber-100/70 border border-amber-300/80 rounded-xl p-2.5 text-center text-xs font-mono">
+            <div>
+              <div class="text-[10px] text-slate-600 uppercase">Exam Score</div>
+              <div id="certScorePct" class="font-bold text-slate-950 text-sm">95% (19/20)</div>
+            </div>
+            <div class="border-x border-amber-300">
+              <div class="text-[10px] text-slate-600 uppercase">Date Issued</div>
+              <div id="certDateText" class="font-bold text-slate-950 text-sm">September 8, 2026</div>
+            </div>
+            <div>
+              <div class="text-[10px] text-slate-600 uppercase">Certificate ID</div>
+              <div id="certIdNumber" class="font-bold text-slate-950 text-xs truncate px-1">FL-2026-9812</div>
+            </div>
+          </div>
+
+          <!-- Signatures & Official Stamp -->
+          <div class="pt-4 flex items-end justify-between max-w-xl mx-auto gap-4">
+            <div class="text-center flex-1">
+              <div class="font-serif italic text-base text-slate-800 border-b border-slate-400 pb-0.5">
+                OSHA Training Curriculum
+              </div>
+              <div class="text-[10px] uppercase font-mono text-slate-600 mt-1 font-bold">
+                Certified Safety Instructor
+              </div>
+            </div>
+
+            <!-- Official Gold Seal Badge -->
+            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-amber-600 via-amber-400 to-yellow-200 p-0.5 shadow-md flex items-center justify-center shrink-0">
+              <div class="w-full h-full rounded-full border border-amber-700 bg-amber-50 flex flex-col items-center justify-center p-1 text-center">
+                <span class="text-amber-800 text-xs">★</span>
+                <span class="font-tech font-bold text-[8px] sm:text-[9px] text-amber-950 uppercase leading-none">
+                  OFFICIAL SAFETY
+                </span>
+                <span class="font-mono text-[7px] text-amber-800">VERIFIED</span>
+              </div>
+            </div>
+
+            <div class="text-center flex-1">
+              <div id="certCandidateSignature" class="font-serif italic text-base text-slate-800 border-b border-slate-400 pb-0.5">
+                Jordan Miller
+              </div>
+              <div class="text-[10px] uppercase font-mono text-slate-600 mt-1 font-bold">
+                Student Operator Candidate
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Offscreen canvas for generating PNG Certificate downloads -->
+  <canvas id="certExportCanvas" width="1200" height="850" class="hidden"></canvas>
+
+  <script>
+    // Audio synthesizer using Web Audio API
+    let audioCtx = null;
+    let sfxEnabled = true;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    function playTone(freq, duration, type = 'sine', gainVal = 0.1) {
+      if (!sfxEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(gainVal, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      } catch (e) {
+        // Audio error suppression
+      }
+    }
+
+    function playEngineRev(duration = 2.4) {
+      if (!sfxEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(80, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + duration * 0.4);
+        osc.frequency.exponentialRampToValueAtTime(70, ctx.currentTime + duration);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playTireScreech() {
+      if (!sfxEnabled) return;
+      try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1250, ctx.currentTime + 0.35);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.4);
+      } catch (e) {}
+    }
+
+    function playCrashSound() {
+      if (!sfxEnabled) return;
+      playTireScreech();
+      setTimeout(() => {
+        playTone(55, 0.8, 'sawtooth', 0.4);
+        playTone(110, 0.5, 'triangle', 0.3);
+      }, 120);
+    }
+
+    function playSuccessChime() {
+      playTone(523.25, 0.15, 'sine', 0.15); // C5
+      setTimeout(() => playTone(659.25, 0.18, 'sine', 0.15), 110); // E5
+      setTimeout(() => playTone(783.99, 0.3, 'sine', 0.18), 220); // G5
+    }
+
+    function playWarningBeep() {
+      playTone(880, 0.08, 'square', 0.08);
+      setTimeout(() => playTone(880, 0.08, 'square', 0.08), 120);
+    }
+
+    // Canvas shape helper for cross-browser reliability
+    function drawRoundRect(ctx, x, y, w, h, r = 4) {
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, r);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+      }
+    }
+
+    // Physical Specifications of Standard Counterbalanced Forklift (Class I/IV/V)
+    const TRUCK_WEIGHT = 9000;          // lbs (Counterweight + Chassis)
+    const TRUCK_WHEELBASE = 55;         // inches (Drive axle to steer axle)
+    const TRUCK_TREAD_WIDTH = 40;       // inches (Drive axle track width)
+    const RATED_CAPACITY = 4000;        // lbs
+    const RATED_LOAD_CENTER = 24;       // inches from carriage face
+    const DRIVE_AXLE_TO_CARRIAGE = 18;  // inches from front drive axle to fork vertical face
+    const TRUCK_EMPTY_CG_LONG = 28;     // inches behind front drive axle
+    const TRUCK_EMPTY_CG_HEIGHT = 22;   // inches above ground level
+
+    // Live Operator State
+    const state = {
+      weight: 2500,        // lbs
+      loadCenter: 24,      // inches
+      pitch: 4,            // degrees (- forward, + backward)
+      liftHeight: 6,       // inches
+      speed: 4.5,          // MPH
+      turnAngle: 20,       // degrees
+      activeView: 'profile', // 'profile' or 'iso'
+      isSimulating: false,
+      simProgress: 0,      // 0 to 1
+      animFrameId: null,
+      slideOffset: 0,      // inches of product slip if tilted forward
+      tipAngle: 0,         // pitch or roll angle in radians
+      groundScroll: 0,     // visual distance scrolled
+      incidentTriggered: false
+    };
+
+    function calculatePhysics() {
+      const pitchRad = (state.pitch * Math.PI) / 180;
+      
+      // Mast deflection and height changes
+      const mastDeflectionLong = (state.liftHeight * Math.sin(-pitchRad));
+      const loadLongitudinalPos = DRIVE_AXLE_TO_CARRIAGE + (state.loadCenter * Math.cos(pitchRad)) + mastDeflectionLong;
+      const loadHeightPos = state.liftHeight + 12 + (state.loadCenter * Math.sin(pitchRad));
+
+      // Moments around the front drive axle fulcrum
+      const truckMoment = -TRUCK_WEIGHT * TRUCK_EMPTY_CG_LONG;
+      const loadMoment = state.weight * loadLongitudinalPos;
+      const totalWeight = TRUCK_WEIGHT + state.weight;
+      
+      // Combined Center of Gravity coordinates
+      const combinedCG_Long = - (truckMoment + loadMoment) / totalWeight; 
+      const combinedCG_Height = ((TRUCK_WEIGHT * TRUCK_EMPTY_CG_HEIGHT) + (state.weight * loadHeightPos)) / totalWeight;
+
+      // Allowable lateral width at this longitudinal CG position in the stability triangle
+      const allowedHalfWidth = Math.max(0, (TRUCK_TREAD_WIDTH / 2) * (1 - (combinedCG_Long / TRUCK_WHEELBASE)));
+
+      // Dynamic Centrifugal Force: a = v^2 / R
+      const v_fps = state.speed * 1.46667;
+      const steerRad = Math.max(0.08, (state.turnAngle * Math.PI) / 180);
+      const turnRadius_inches = Math.max(36, TRUCK_WHEELBASE / Math.tan(steerRad));
+      const turnRadius_ft = turnRadius_inches / 12;
+
+      const lateralG = (state.speed > 0.1 && state.turnAngle > 1) 
+        ? (Math.pow(v_fps, 2) / (32.174 * turnRadius_ft)) 
+        : 0;
+
+      // Dynamic lateral shift of the combined CG due to centrifugal acceleration
+      const dynamicLateralShift = combinedCG_Height * lateralG;
+
+      // OSHA Capacity Formula derating
+      const actualAllowableCap = Math.round(RATED_CAPACITY * (RATED_LOAD_CENTER / Math.max(12, state.loadCenter)));
+
+      // Hazard conditions evaluation
+      const isForwardTip = combinedCG_Long <= 1.5 || (state.weight > actualAllowableCap * 1.15 && state.pitch <= 0);
+      const isLateralRoll = (dynamicLateralShift >= allowedHalfWidth) || (dynamicLateralShift >= 18.5);
+      const isLoadSlip = (state.pitch < -2 && state.weight > 300) || (state.pitch < 0 && state.speed > 6.0);
+
+      // Safety Margin Percentage (0 to 100)
+      let safetyMargin = 100;
+      if (isForwardTip || isLateralRoll) {
+        safetyMargin = 0;
+      } else {
+        const longMargin = Math.min(100, Math.max(0, (combinedCG_Long / 32) * 100));
+        const latMargin = Math.min(100, Math.max(0, (1 - (dynamicLateralShift / Math.max(1, allowedHalfWidth))) * 100));
+        safetyMargin = Math.round(Math.min(longMargin, latMargin));
+      }
+
+      return {
+        combinedCG_Long,
+        combinedCG_Height,
+        dynamicLateralShift,
+        allowedHalfWidth,
+        lateralG,
+        loadLongitudinalPos,
+        safetyMargin,
+        isForwardTip,
+        isLateralRoll,
+        isLoadSlip,
+        actualAllowableCap,
+        loadMoment: Math.round(state.weight * state.loadCenter)
+      };
+    }
+
+    const sliderWeight = document.getElementById('sliderWeight');
+    const sliderLoadCenter = document.getElementById('sliderLoadCenter');
+    const sliderPitch = document.getElementById('sliderPitch');
+    const sliderHeight = document.getElementById('sliderHeight');
+    const sliderSpeed = document.getElementById('sliderSpeed');
+    const sliderTurn = document.getElementById('sliderTurn');
+
+    const valWeight = document.getElementById('valWeight');
+    const valLoadCenter = document.getElementById('valLoadCenter');
+    const valPitch = document.getElementById('valPitch');
+    const pitchLabelText = document.getElementById('pitchLabelText');
+    const valHeight = document.getElementById('valHeight');
+    const valSpeed = document.getElementById('valSpeed');
+    const valTurn = document.getElementById('valTurn');
+
+    const hudMoment = document.getElementById('hudMoment');
+    const hudLateralG = document.getElementById('hudLateralG');
+    const hudCGHeight = document.getElementById('hudCGHeight');
+    const stabilityBadge = document.getElementById('stabilityBadge');
+    const stabilityStatusText = document.getElementById('stabilityStatusText');
+    const forensicTip = document.getElementById('forensicTip');
+    const hazardAlertBanner = document.getElementById('hazardAlertBanner');
+    const hazardTitle = document.getElementById('hazardTitle');
+    const hazardDesc = document.getElementById('hazardDesc');
+    const hazardOshaTip = document.getElementById('hazardOshaTip');
+    const successAlertBanner = document.getElementById('successAlertBanner');
+    const successDesc = document.getElementById('successDesc');
+
+    const simProgressBarContainer = document.getElementById('simProgressBarContainer');
+    const simProgressBar = document.getElementById('simProgressBar');
+    const simProgressPct = document.getElementById('simProgressPct');
+    const simProgressLabel = document.getElementById('simProgressLabel');
+    const simSubLabel = document.getElementById('simSubLabel');
+
+    const cgMarginPct = document.getElementById('cgMarginPct');
+    const cgMarginBar = document.getElementById('cgMarginBar');
+    const statLongCG = document.getElementById('statLongCG');
+    const statLatCG = document.getElementById('statLatCG');
+    const formulaCenter = document.getElementById('formulaCenter');
+    const formulaCapacity = document.getElementById('formulaCapacity');
+
+    const viewProfileBtn = document.getElementById('viewProfileBtn');
+    const viewIsoBtn = document.getElementById('viewIsoBtn');
+    const runManeuverBtn = document.getElementById('runManeuverBtn');
+    const runBtnIcon = document.getElementById('runBtnIcon');
+    const runBtnText = document.getElementById('runBtnText');
+    const resetParamsBtn = document.getElementById('resetParamsBtn');
+
+    function stopSimulation() {
+      if (state.animFrameId) {
+        cancelAnimationFrame(state.animFrameId);
+        state.animFrameId = null;
+      }
+      state.isSimulating = false;
+      state.simProgress = 0;
+      state.slideOffset = 0;
+      state.tipAngle = 0;
+      state.incidentTriggered = false;
+
+      hazardAlertBanner.classList.add('hidden');
+      successAlertBanner.classList.add('hidden');
+      simProgressBarContainer.classList.add('hidden');
+      
+      runBtnIcon.textContent = '▶';
+      runBtnText.textContent = 'RUN TEST TRANSITION';
+      runManeuverBtn.classList.remove('opacity-75');
+    }
+
+    function updateStateFromInputs() {
+      stopSimulation();
+
+      state.weight = parseFloat(sliderWeight.value);
+      state.loadCenter = parseFloat(sliderLoadCenter.value);
+      state.pitch = parseFloat(sliderPitch.value);
+      state.liftHeight = parseFloat(sliderHeight.value);
+      state.speed = parseFloat(sliderSpeed.value);
+      state.turnAngle = parseFloat(sliderTurn.value);
+
+      valWeight.textContent = state.weight.toLocaleString();
+      valLoadCenter.textContent = state.loadCenter;
+      valPitch.textContent = (state.pitch > 0 ? '+' : '') + state.pitch;
+      pitchLabelText.textContent = state.pitch > 0 ? '(Tilt Back)' : (state.pitch < 0 ? '(Tilt Forward)' : '(Level)');
+      valHeight.textContent = state.liftHeight;
+      valSpeed.textContent = state.speed.toFixed(1);
+      valTurn.textContent = state.turnAngle;
+
+      formulaCenter.textContent = state.loadCenter + '"';
+      
+      const p = calculatePhysics();
+      formulaCapacity.textContent = p.actualAllowableCap.toLocaleString() + ' lbs';
+      
+      if (state.weight > p.actualAllowableCap) {
+        formulaCapacity.className = 'font-bold text-red-400';
+      } else {
+        formulaCapacity.className = 'font-bold text-emerald-400';
+      }
+
+      updateHUDAndStatus(p);
+      renderAllCanvases();
+    }
+
+    [sliderWeight, sliderLoadCenter, sliderPitch, sliderHeight, sliderSpeed, sliderTurn].forEach(el => {
+      el.addEventListener('input', updateStateFromInputs);
+    });
+
+    function updateHUDAndStatus(p) {
+      hudMoment.textContent = p.loadMoment.toLocaleString() + " in-lbs";
+      hudLateralG.textContent = p.lateralG.toFixed(2) + " G";
+      hudCGHeight.textContent = p.combinedCG_Height.toFixed(1) + " in";
+
+      statLongCG.textContent = p.combinedCG_Long.toFixed(1) + '" (Behind Axle)';
+      statLatCG.textContent = p.dynamicLateralShift.toFixed(1) + '" (Limit ' + p.allowedHalfWidth.toFixed(1) + '")';
+
+      cgMarginPct.textContent = p.safetyMargin + "% (" + (p.safetyMargin > 60 ? 'SAFE' : (p.safetyMargin > 20 ? 'CAUTION' : 'DANGER')) + ")";
+      cgMarginBar.style.width = p.safetyMargin + "%";
+
+      if (p.safetyMargin > 60) {
+        cgMarginBar.className = "h-full bg-emerald-500 rounded-full transition-all duration-200";
+        cgMarginPct.className = "font-bold text-emerald-400";
+        stabilityBadge.className = "px-3 py-1 rounded-full font-mono text-xs font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/40 flex items-center space-x-1.5";
+        stabilityStatusText.textContent = "STABLE CONDITION";
+      } else if (p.safetyMargin > 20) {
+        cgMarginBar.className = "h-full bg-amber-500 rounded-full transition-all duration-200";
+        cgMarginPct.className = "font-bold text-amber-400";
+        stabilityBadge.className = "px-3 py-1 rounded-full font-mono text-xs font-bold bg-amber-950 text-amber-300 border border-amber-500/40 flex items-center space-x-1.5";
+        stabilityStatusText.textContent = "STABILITY WARNING";
+      } else {
+        cgMarginBar.className = "h-full bg-red-600 rounded-full transition-all duration-200";
+        cgMarginPct.className = "font-bold text-red-400";
+        stabilityBadge.className = "px-3 py-1 rounded-full font-mono text-xs font-bold bg-red-950 text-red-300 border border-red-500/50 flex items-center space-x-1.5 danger-pulse";
+        stabilityStatusText.textContent = "CRITICAL TIP RISK";
+      }
+
+      if (state.liftHeight > 30 && state.speed > 3.5) {
+        forensicTip.textContent = "OSHA 1910.178(n)(7) VIOLATION: Never drive with elevated mast. Lower forks to 4-6 inches before motion.";
+      } else if (state.pitch < 0) {
+        forensicTip.textContent = "FORWARD PITCH WARNING: Tilting the mast forward shifts the load moment ahead of the front drive axle fulcrum.";
+      } else if (state.weight > p.actualAllowableCap) {
+        forensicTip.textContent = "OVERLOAD HAZARD: Exceeding derated capacity (" + p.actualAllowableCap.toLocaleString() + " lbs at " + state.loadCenter + '" center) eliminates steer traction.';
+      } else if (state.speed > 7 && state.turnAngle > 20) {
+        forensicTip.textContent = "CENTRIFUGAL OVERLOAD: Excessive speed in cornering produces lateral rollover momentum outside the stability triangle.";
+      } else {
+        forensicTip.textContent = "Compliant driving: Forks kept 4-6\" above floor, mast tilted backward 4°-6°, controlled turn speed.";
+      }
+    }
+
+    const audioToggleBtn = document.getElementById('audioToggleBtn');
+    const audioLabel = document.getElementById('audioLabel');
+    const audioIcon = document.getElementById('audioIcon');
+    audioToggleBtn.addEventListener('click', () => {
+      sfxEnabled = !sfxEnabled;
+      audioLabel.textContent = sfxEnabled ? 'Audio SFX: ON' : 'Audio SFX: OFF';
+      audioIcon.textContent = sfxEnabled ? '🔊' : '🔇';
+      if (sfxEnabled) playTone(440, 0.1, 'sine', 0.1);
+    });
+
+    viewProfileBtn.addEventListener('click', () => {
+      state.activeView = 'profile';
+      viewProfileBtn.className = "px-2.5 py-1 rounded text-xs font-medium bg-amber-500 text-slate-950 font-semibold shadow transition cursor-pointer";
+      viewIsoBtn.className = "px-2.5 py-1 rounded text-xs font-medium text-slate-400 hover:text-white transition cursor-pointer";
+      renderAllCanvases();
+    });
+
+    viewIsoBtn.addEventListener('click', () => {
+      state.activeView = 'iso';
+      viewIsoBtn.className = "px-2.5 py-1 rounded text-xs font-medium bg-amber-500 text-slate-950 font-semibold shadow transition cursor-pointer";
+      viewProfileBtn.className = "px-2.5 py-1 rounded text-xs font-medium text-slate-400 hover:text-white transition cursor-pointer";
+      renderAllCanvases();
+    });
+
+    resetParamsBtn.addEventListener('click', () => {
+      stopSimulation();
+      sliderWeight.value = 2500;
+      sliderLoadCenter.value = 24;
+      sliderPitch.value = 4;
+      sliderHeight.value = 6;
+      sliderSpeed.value = 4.5;
+      sliderTurn.value = 20;
+      state.activeView = 'profile';
+      viewProfileBtn.className = "px-2.5 py-1 rounded text-xs font-medium bg-amber-500 text-slate-950 font-semibold shadow transition cursor-pointer";
+      viewIsoBtn.className = "px-2.5 py-1 rounded text-xs font-medium text-slate-400 hover:text-white transition cursor-pointer";
+      updateStateFromInputs();
+      playSuccessChime();
+    });
+
+    document.querySelectorAll('.scenario-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const scenario = btn.getAttribute('data-scenario');
+        stopSimulation();
+
+        if (scenario === 'safeTravel') {
+          sliderWeight.value = 2500;
+          sliderLoadCenter.value = 24;
+          sliderPitch.value = 5;
+          sliderHeight.value = 6;
+          sliderSpeed.value = 4.5;
+          sliderTurn.value = 18;
+          state.activeView = 'profile';
+        } else if (scenario === 'highMastTurn') {
+          sliderWeight.value = 3000;
+          sliderLoadCenter.value = 24;
+          sliderPitch.value = 0;
+          sliderHeight.value = 95;
+          sliderSpeed.value = 8.5;
+          sliderTurn.value = 50;
+          state.activeView = 'iso';
+        } else if (scenario === 'overExtended') {
+          sliderWeight.value = 4800;
+          sliderLoadCenter.value = 42;
+          sliderPitch.value = -2;
+          sliderHeight.value = 20;
+          sliderSpeed.value = 3;
+          sliderTurn.value = 10;
+          state.activeView = 'profile';
+        } else if (scenario === 'forwardPitchDescent') {
+          sliderWeight.value = 3500;
+          sliderLoadCenter.value = 26;
+          sliderPitch.value = -8;
+          sliderHeight.value = 14;
+          sliderSpeed.value = 7.0;
+          sliderTurn.value = 15;
+          state.activeView = 'profile';
+        }
+
+        viewProfileBtn.className = state.activeView === 'profile' 
+          ? "px-2.5 py-1 rounded text-xs font-medium bg-amber-500 text-slate-950 font-semibold shadow transition cursor-pointer" 
+          : "px-2.5 py-1 rounded text-xs font-medium text-slate-400 hover:text-white transition cursor-pointer";
+        viewIsoBtn.className = state.activeView === 'iso'
+          ? "px-2.5 py-1 rounded text-xs font-medium bg-amber-500 text-slate-950 font-semibold shadow transition cursor-pointer"
+          : "px-2.5 py-1 rounded text-xs font-medium text-slate-400 hover:text-white transition cursor-pointer";
+
+        updateStateFromInputs();
+        playWarningBeep();
+      });
+    });
+
+    runManeuverBtn.addEventListener('click', () => {
+      getAudioContext();
+      
+      if (state.isSimulating) {
+        stopSimulation();
+        return;
+      }
+
+      const p = calculatePhysics();
+      state.isSimulating = true;
+      state.simProgress = 0;
+      state.slideOffset = 0;
+      state.tipAngle = 0;
+      state.groundScroll = 0;
+      state.incidentTriggered = false;
+
+      hazardAlertBanner.classList.add('hidden');
+      successAlertBanner.classList.add('hidden');
+      simProgressBarContainer.classList.remove('hidden');
+      simProgressBar.style.width = '0%';
+      simProgressPct.textContent = '0%';
+      simProgressLabel.textContent = state.activeView === 'profile' ? 'ACCELERATING & TRANSIT...' : 'CORNERING TRAJECTORY...';
+      simSubLabel.textContent = 'Monitoring Center of Gravity stability...';
+      
+      runBtnIcon.textContent = '⏹';
+      runBtnText.textContent = 'STOP SIMULATION';
+      runManeuverBtn.classList.add('opacity-75');
+
+      playEngineRev(2.6);
+
+      let lastTime = performance.now();
+      const totalDuration = 2600; // ms for transit maneuver
+
+      function stepAnimation(currentTime) {
+        if (!state.isSimulating) return;
+
+        const dt = Math.min(0.05, (currentTime - lastTime) / 1000);
+        lastTime = currentTime;
+
+        state.simProgress += dt / (totalDuration / 1000);
+        const progressClamped = Math.min(1, state.simProgress);
+        const pctInt = Math.round(progressClamped * 100);
+
+        simProgressBar.style.width = `${pctInt}%`;
+        simProgressPct.textContent = `${pctInt}%`;
+
+        // Update wheel rotation and ground motion
+        state.groundScroll += (state.speed * 85) * dt;
+
+        // Incident detection during dynamic maneuver
+        if (p.isLateralRoll && progressClamped > 0.35) {
+          state.tipAngle = Math.min(1.2, state.tipAngle + dt * 2.8);
+          simSubLabel.textContent = 'CRITICAL: Centrifugal lateral rollover!';
+          if (!state.incidentTriggered) {
+            state.incidentTriggered = true;
+            playCrashSound();
+            triggerIncident(
+              'CATASTROPHIC LATERAL ROLLOVER', 
+              `Centrifugal force (${p.lateralG.toFixed(2)} G) threw the combined center of gravity ${p.dynamicLateralShift.toFixed(1)}" outward beyond the ${p.allowedHalfWidth.toFixed(1)}" stability triangle limit. The forklift rolled over sideways.`,
+              'OSHA Safety Rule: In a tipover, DO NOT jump! Stay inside the cab, grip the steering wheel firmly, brace your feet, and lean away from the impact.'
+            );
+          }
+        } else if (p.isForwardTip && progressClamped > 0.3) {
+          state.tipAngle = Math.min(0.40, state.tipAngle + dt * 1.5);
+          simSubLabel.textContent = 'CRITICAL: Forward pitchover detected!';
+          if (!state.incidentTriggered) {
+            state.incidentTriggered = true;
+            playCrashSound();
+            triggerIncident(
+              'FORWARD LONGITUDINAL TIPOVER',
+              `Load leverage moment (${p.loadMoment.toLocaleString()} in-lbs) and forward tilt (${state.pitch}°) pulled the combined center of gravity forward past the front drive axle fulcrum. The rear steer wheels lost contact.`,
+              'OSHA Standard 1910.178: Never tilt mast forward when carrying elevated loads. Keep loads tilted backward against the carriage during travel.'
+            );
+          }
+        } else if (p.isLoadSlip && progressClamped > 0.28) {
+          state.slideOffset = Math.min(85, state.slideOffset + dt * 150);
+          simSubLabel.textContent = 'WARNING: Load spilled off forks!';
+          if (!state.incidentTriggered) {
+            state.incidentTriggered = true;
+            playTone(200, 0.4, 'sawtooth', 0.25);
+            setTimeout(() => playTone(80, 0.5, 'triangle', 0.3), 180);
+            triggerIncident(
+              'UNSECURED LOAD SLIP / SPILL',
+              `Forward mast tilt (${state.pitch}°) reduced frictional resistance. The momentum of motion caused the product crate to slide completely off the fork tines and crash into the travel aisle.`,
+              'OSHA Standard 1910.178: Only tilt mast forward when directly over racking or stacks for placement. Travel must always have forks tilted backward.'
+            );
+          }
+        } else {
+          simSubLabel.textContent = 'Stable transport verified within OSHA envelope.';
+        }
+
+        renderAllCanvases();
+
+        // Completion checks
+        if (progressClamped >= 1) {
+          if (!p.isLateralRoll && !p.isForwardTip && !p.isLoadSlip) {
+            playSuccessChime();
+            successAlertBanner.classList.remove('hidden');
+            successDesc.textContent = `Safe transport verified! Carrying ${state.weight.toLocaleString()} lbs at ${state.speed.toFixed(1)} MPH with forks low and mast tilted back (+${state.pitch}°) kept the combined Center of Gravity securely inside the Stability Triangle.`;
+          }
+          runBtnIcon.textContent = '▶';
+          runBtnText.textContent = 'RE-RUN TEST TRANSITION';
+          runManeuverBtn.classList.remove('opacity-75');
+          state.isSimulating = false;
+          return;
+        }
+
+        // Stop loop if fully tipped over
+        if (state.tipAngle >= 1.15 || (p.isForwardTip && state.tipAngle >= 0.38)) {
+          runBtnIcon.textContent = '▶';
+          runBtnText.textContent = 'RE-RUN TEST TRANSITION';
+          runManeuverBtn.classList.remove('opacity-75');
+          state.isSimulating = false;
+          return;
+        }
+
+        state.animFrameId = requestAnimationFrame(stepAnimation);
+      }
+
+      state.animFrameId = requestAnimationFrame(stepAnimation);
+    });
+
+    function triggerIncident(title, desc, oshaQuote) {
+      hazardTitle.textContent = title;
+      hazardDesc.textContent = desc;
+      hazardOshaTip.textContent = oshaQuote;
+      hazardAlertBanner.classList.remove('hidden');
+    }
+
+    const triangleCanvas = document.getElementById('triangleCanvas');
+    const triCtx = triangleCanvas.getContext('2d');
+
+    function drawStabilityTriangle(p) {
+      const w = triangleCanvas.width;
+      const h = triangleCanvas.height;
+      triCtx.clearRect(0, 0, w, h);
+
+      const apexX = w / 2;
+      const apexY = h - 25;
+      const baseLeftX = w / 2 - 80;
+      const baseRightX = w / 2 + 80;
+      const baseY = 38;
+
+      // Subtle grid
+      triCtx.strokeStyle = '#1e293b';
+      triCtx.lineWidth = 1;
+      for (let x = 10; x < w; x += 25) {
+        triCtx.beginPath(); triCtx.moveTo(x, 0); triCtx.lineTo(x, h); triCtx.stroke();
+      }
+      for (let y = 10; y < h; y += 25) {
+        triCtx.beginPath(); triCtx.moveTo(0, y); triCtx.lineTo(w, y); triCtx.stroke();
+      }
+
+      // Stability Triangle Boundary
+      triCtx.beginPath();
+      triCtx.moveTo(apexX, apexY);
+      triCtx.lineTo(baseLeftX, baseY);
+      triCtx.lineTo(baseRightX, baseY);
+      triCtx.closePath();
+
+      const grad = triCtx.createLinearGradient(0, baseY, 0, apexY);
+      grad.addColorStop(0, 'rgba(234, 179, 8, 0.25)');
+      grad.addColorStop(1, 'rgba(234, 179, 8, 0.05)');
+      triCtx.fillStyle = grad;
+      triCtx.fill();
+
+      triCtx.strokeStyle = '#facc15';
+      triCtx.lineWidth = 2.5;
+      triCtx.stroke();
+
+      // Front Wheels
+      triCtx.fillStyle = '#64748b';
+      triCtx.fillRect(baseLeftX - 12, baseY - 8, 24, 16);
+      triCtx.fillRect(baseRightX - 12, baseY - 8, 24, 16);
+
+      // Rear Steer Pivot Pin
+      triCtx.beginPath();
+      triCtx.arc(apexX, apexY, 7, 0, Math.PI * 2);
+      triCtx.fillStyle = '#38bdf8';
+      triCtx.fill();
+      triCtx.strokeStyle = '#0f172a';
+      triCtx.lineWidth = 2;
+      triCtx.stroke();
+
+      // Centerline
+      triCtx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
+      triCtx.setLineDash([4, 4]);
+      triCtx.beginPath();
+      triCtx.moveTo(apexX, baseY - 15);
+      triCtx.lineTo(apexX, apexY + 15);
+      triCtx.stroke();
+      triCtx.setLineDash([]);
+
+      // Map combined CG position
+      const longRatio = Math.min(1.25, Math.max(-0.25, p.combinedCG_Long / TRUCK_WHEELBASE));
+      const cgCanvasY = baseY + (longRatio * (apexY - baseY));
+
+      let dynamicLat = p.dynamicLateralShift;
+      if (state.isSimulating) {
+        dynamicLat += Math.sin(state.simProgress * Math.PI * 2) * 0.3;
+      }
+
+      const pxPerInch = 80 / (TRUCK_TREAD_WIDTH / 2);
+      const cgCanvasX = apexX + (dynamicLat * pxPerInch);
+
+      const isInSafeZone = !p.isForwardTip && !p.isLateralRoll && p.safetyMargin > 0;
+      const cgColor = isInSafeZone ? '#10b981' : '#ef4444';
+
+      // Outer glow
+      triCtx.beginPath();
+      triCtx.arc(cgCanvasX, cgCanvasY, 12, 0, Math.PI * 2);
+      triCtx.fillStyle = isInSafeZone ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.4)';
+      triCtx.fill();
+
+      // Core point
+      triCtx.beginPath();
+      triCtx.arc(cgCanvasX, cgCanvasY, 6, 0, Math.PI * 2);
+      triCtx.fillStyle = cgColor;
+      triCtx.fill();
+      triCtx.strokeStyle = '#ffffff';
+      triCtx.lineWidth = 1.5;
+      triCtx.stroke();
+
+      triCtx.font = '600 11px JetBrains Mono';
+      triCtx.fillStyle = '#ffffff';
+      triCtx.textAlign = 'left';
+      triCtx.fillText("Combined CG", cgCanvasX + 10, cgCanvasY - 4);
+
+      if (Math.abs(dynamicLat) > 0.5) {
+        triCtx.beginPath();
+        triCtx.moveTo(apexX, cgCanvasY);
+        triCtx.lineTo(cgCanvasX, cgCanvasY);
+        triCtx.strokeStyle = '#f87171';
+        triCtx.lineWidth = 2;
+        triCtx.stroke();
+      }
+    }
+
+    const simCanvas = document.getElementById('simCanvas');
+    const simCtx = simCanvas.getContext('2d');
+
+    function resizeSimCanvas() {
+      const rect = simCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const displayWidth = rect.width || 640;
+      const displayHeight = rect.height || 400;
+      simCanvas.width = displayWidth * dpr;
+      simCanvas.height = displayHeight * dpr;
+      if (simCtx.resetTransform) {
+        simCtx.resetTransform();
+      } else {
+        simCtx.setTransform(1, 0, 0, 1, 0, 0);
+      }
+      simCtx.scale(dpr, dpr);
+    }
+
+    window.addEventListener('resize', () => {
+      resizeSimCanvas();
+      renderAllCanvases();
+    });
+
+    function drawSideProfileView(p) {
+      const w = simCanvas.width / (window.devicePixelRatio || 1);
+      const h = simCanvas.height / (window.devicePixelRatio || 1);
+      simCtx.clearRect(0, 0, w, h);
+
+      const floorY = h - 60;
+
+      // Warehouse background
+      simCtx.fillStyle = '#090d16';
+      simCtx.fillRect(0, 0, w, floorY);
+
+      // Moving background warehouse columns
+      simCtx.strokeStyle = '#1e293b';
+      simCtx.lineWidth = 1.5;
+      const colSpacing = 130;
+      const colOffset = (state.groundScroll * 0.35) % colSpacing;
+      for (let x = -colSpacing; x < w + colSpacing; x += colSpacing) {
+        simCtx.beginPath();
+        simCtx.moveTo(x - colOffset, 20);
+        simCtx.lineTo(x - colOffset, floorY);
+        simCtx.stroke();
+      }
+
+      // Warehouse Floor Solid
+      simCtx.fillStyle = '#0f172a';
+      simCtx.fillRect(0, floorY, w, 60);
+      
+      // Moving safety hash stripes along concrete floor
+      const stripeWidth = 40;
+      const stripeOffset = state.groundScroll % stripeWidth;
+      simCtx.strokeStyle = '#334155';
+      simCtx.lineWidth = 2;
+      for (let sx = -stripeWidth; sx < w + stripeWidth; sx += stripeWidth) {
+        simCtx.beginPath();
+        simCtx.moveTo(sx - stripeOffset, floorY);
+        simCtx.lineTo(sx - stripeOffset - 15, floorY + 60);
+        simCtx.stroke();
+      }
+
+      // Floor boundary line
+      simCtx.strokeStyle = '#475569';
+      simCtx.lineWidth = 3;
+      simCtx.beginPath();
+      simCtx.moveTo(0, floorY);
+      simCtx.lineTo(w, floorY);
+      simCtx.stroke();
+
+      simCtx.font = '10px JetBrains Mono';
+      simCtx.fillStyle = '#64748b';
+      simCtx.fillText('CONCRETE FLOOR (0" TRAVEL DATUM)', 20, floorY + 24);
+
+      const truckBaseX = w * 0.44;
+      const wheelRadius = 24;
+
+      simCtx.save();
+      // Pivot around front drive wheel during forward pitchover
+      simCtx.translate(truckBaseX, floorY - wheelRadius);
+      
+      let forwardAngle = 0;
+      if (p.isForwardTip) {
+        forwardAngle = state.isSimulating ? state.tipAngle : (state.tipAngle || 0.22);
+      }
+      simCtx.rotate(forwardAngle);
+
+      // Front Wheel (Fulcrum Point)
+      simCtx.beginPath();
+      simCtx.arc(0, 0, wheelRadius, 0, Math.PI * 2);
+      simCtx.fillStyle = '#1e293b';
+      simCtx.fill();
+      simCtx.strokeStyle = '#eab308';
+      simCtx.lineWidth = 3;
+      simCtx.stroke();
+
+      // Wheel Spokes
+      const wheelRot = state.groundScroll / wheelRadius;
+      simCtx.beginPath();
+      simCtx.moveTo(Math.cos(wheelRot) * wheelRadius, Math.sin(wheelRot) * wheelRadius);
+      simCtx.lineTo(-Math.cos(wheelRot) * wheelRadius, -Math.sin(wheelRot) * wheelRadius);
+      simCtx.moveTo(Math.cos(wheelRot + 1.57) * wheelRadius, Math.sin(wheelRot + 1.57) * wheelRadius);
+      simCtx.lineTo(-Math.cos(wheelRot + 1.57) * wheelRadius, -Math.sin(wheelRot + 1.57) * wheelRadius);
+      simCtx.strokeStyle = '#64748b';
+      simCtx.lineWidth = 2;
+      simCtx.stroke();
+
+      // Pivot Pin
+      simCtx.beginPath();
+      simCtx.arc(0, 0, 4, 0, Math.PI * 2);
+      simCtx.fillStyle = '#facc15';
+      simCtx.fill();
+
+      // Rear Wheel (Steer Axle) - 130 px behind front
+      const rearWheelX = -130;
+      simCtx.beginPath();
+      simCtx.arc(rearWheelX, 0, wheelRadius * 0.85, 0, Math.PI * 2);
+      simCtx.fillStyle = '#1e293b';
+      simCtx.fill();
+      simCtx.strokeStyle = '#64748b';
+      simCtx.lineWidth = 2;
+      simCtx.stroke();
+
+      simCtx.beginPath();
+      simCtx.moveTo(rearWheelX + Math.cos(wheelRot) * 18, Math.sin(wheelRot) * 18);
+      simCtx.lineTo(rearWheelX - Math.cos(wheelRot) * 18, -Math.sin(wheelRot) * 18);
+      simCtx.stroke();
+
+      // Warning indicator if rear wheels are off ground
+      if (forwardAngle > 0.05) {
+        simCtx.font = 'bold 10px JetBrains Mono';
+        simCtx.fillStyle = '#ef4444';
+        simCtx.fillText('▲ LOSS OF STEER TRACTION', rearWheelX - 45, 32);
+      }
+
+      // Chassis Body
+      simCtx.fillStyle = '#f59e0b';
+      drawRoundRect(simCtx, rearWheelX - 30, -75, 170, 60, 8);
+      simCtx.fill();
+      simCtx.strokeStyle = '#b45309';
+      simCtx.lineWidth = 2;
+      simCtx.stroke();
+
+      // Rear Counterweight
+      simCtx.fillStyle = '#334155';
+      drawRoundRect(simCtx, rearWheelX - 35, -85, 48, 70, 8);
+      simCtx.fill();
+      simCtx.fillStyle = '#94a3b8';
+      simCtx.font = 'bold 9px JetBrains Mono';
+      simCtx.fillText('COUNTER', rearWheelX - 32, -50);
+      simCtx.fillText('WEIGHT', rearWheelX - 32, -38);
+
+      // Cab Protective Overhead Frame
+      simCtx.strokeStyle = '#1e293b';
+      simCtx.lineWidth = 5;
+      simCtx.beginPath();
+      simCtx.moveTo(-110, -75);
+      simCtx.lineTo(-100, -150);
+      simCtx.lineTo(-10, -150);
+      simCtx.lineTo(5, -75);
+      simCtx.stroke();
+      simCtx.fillStyle = '#0f172a';
+      simCtx.fillRect(-115, -155, 125, 6);
+
+      // Operator Seat & Steering Console
+      simCtx.fillStyle = '#475569';
+      simCtx.fillRect(-70, -100, 24, 25);
+      simCtx.strokeStyle = '#0284c7';
+      simCtx.lineWidth = 3;
+      simCtx.beginPath();
+      simCtx.moveTo(-30, -90);
+      simCtx.lineTo(-20, -115);
+      simCtx.stroke();
+
+      // Mast Assembly
+      const mastOriginX = 18;
+      const mastOriginY = -15;
+
+      simCtx.save();
+      simCtx.translate(mastOriginX, mastOriginY);
+      const mastPitchRad = (-state.pitch * Math.PI) / 180;
+      simCtx.rotate(mastPitchRad);
+
+      const mastHeightPx = 180;
+      simCtx.fillStyle = '#1e293b';
+      simCtx.fillRect(-4, -mastHeightPx, 10, mastHeightPx);
+      simCtx.fillRect(10, -mastHeightPx, 8, mastHeightPx);
+
+      // Hydraulic Lift Chains & Ram
+      simCtx.strokeStyle = '#94a3b8';
+      simCtx.lineWidth = 3;
+      simCtx.beginPath();
+      simCtx.moveTo(4, 0);
+      simCtx.lineTo(4, -mastHeightPx * 0.7);
+      simCtx.stroke();
+
+      // Carriage & Fork Tines
+      const liftPx = 8 + (state.liftHeight / 130) * 140;
+      const carriageY = -liftPx;
+
+      simCtx.fillStyle = '#cbd5e1';
+      simCtx.fillRect(18, carriageY - 45, 6, 55);
+
+      const forkLengthPx = 95;
+      simCtx.fillStyle = '#64748b';
+      simCtx.fillRect(18, carriageY + 5, forkLengthPx, 6);
+
+      // Product Crate
+      if (state.weight > 50) {
+        const boxWidth = 55 + (state.weight / 6000) * 35;
+        const boxHeight = 50 + (state.weight / 6000) * 35;
+
+        const palletCenterOffset = (state.loadCenter / 24) * 45;
+        let boxLeft = 24 + (palletCenterOffset - boxWidth / 2) + state.slideOffset;
+        let boxTop = carriageY + 5 - boxHeight;
+
+        // If load slid off forks, fall toward ground
+        if (state.slideOffset > 75) {
+          boxTop += (state.slideOffset - 75) * 1.6;
+        }
+
+        // Wood Pallet
+        simCtx.fillStyle = '#b45309';
+        simCtx.fillRect(boxLeft - 4, carriageY + (state.slideOffset > 75 ? (state.slideOffset - 75) * 1.6 : 0), boxWidth + 8, 5);
+
+        // Box
+        simCtx.fillStyle = p.isLoadSlip && (state.slideOffset > 5) ? '#dc2626' : '#d97706';
+        simCtx.fillRect(boxLeft, boxTop, boxWidth, boxHeight);
+        simCtx.strokeStyle = '#78350f';
+        simCtx.lineWidth = 2;
+        simCtx.strokeRect(boxLeft, boxTop, boxWidth, boxHeight);
+
+        // Box banding
+        simCtx.strokeStyle = '#b45309';
+        simCtx.beginPath();
+        simCtx.moveTo(boxLeft + boxWidth * 0.3, boxTop);
+        simCtx.lineTo(boxLeft + boxWidth * 0.3, boxTop + boxHeight);
+        simCtx.moveTo(boxLeft + boxWidth * 0.7, boxTop);
+        simCtx.lineTo(boxLeft + boxWidth * 0.7, boxTop + boxHeight);
+        simCtx.stroke();
+
+        simCtx.fillStyle = '#ffffff';
+        simCtx.font = 'bold 10px JetBrains Mono';
+        simCtx.textAlign = 'center';
+        simCtx.fillText(state.weight + ' LBS', boxLeft + boxWidth / 2, boxTop + boxHeight / 2);
+
+        // Load CG Marker
+        const loadCG_X = boxLeft + boxWidth / 2;
+        const loadCG_Y = boxTop + boxHeight / 2;
+        simCtx.beginPath();
+        simCtx.arc(loadCG_X, loadCG_Y, 5, 0, Math.PI * 2);
+        simCtx.fillStyle = '#ef4444';
+        simCtx.fill();
+        simCtx.strokeStyle = '#fff';
+        simCtx.lineWidth = 1;
+        simCtx.stroke();
+      }
+
+      simCtx.restore(); // mast
+      simCtx.restore(); // truck base
+
+      // Fulcrum line
+      simCtx.setLineDash([5, 5]);
+      simCtx.strokeStyle = '#eab308';
+      simCtx.lineWidth = 1.5;
+      simCtx.beginPath();
+      simCtx.moveTo(truckBaseX, floorY - wheelRadius);
+      simCtx.lineTo(truckBaseX, 40);
+      simCtx.stroke();
+      simCtx.setLineDash([]);
+
+      simCtx.font = 'bold 10px JetBrains Mono';
+      simCtx.fillStyle = '#facc15';
+      simCtx.textAlign = 'left';
+      simCtx.fillText('▲ FULCRUM AXLE', truckBaseX + 6, 50);
+      simCtx.font = '10px Inter';
+      simCtx.fillStyle = '#94a3b8';
+      simCtx.fillText('Load vs Counterweight Fulcrum', truckBaseX + 6, 64);
+    }
+
+    function drawIsometricTurnView(p) {
+      const w = simCanvas.width / (window.devicePixelRatio || 1);
+      const h = simCanvas.height / (window.devicePixelRatio || 1);
+      simCtx.clearRect(0, 0, w, h);
+
+      simCtx.fillStyle = '#090d16';
+      simCtx.fillRect(0, 0, w, h);
+
+      // Floor grid
+      simCtx.strokeStyle = '#1e293b';
+      simCtx.lineWidth = 1.5;
+      for (let y = 0; y < h; y += 30) {
+        simCtx.beginPath(); simCtx.moveTo(0, y); simCtx.lineTo(w, y); simCtx.stroke();
+      }
+      for (let x = 0; x < w; x += 30) {
+        simCtx.beginPath(); simCtx.moveTo(x, 0); simCtx.lineTo(x, h); simCtx.stroke();
+      }
+
+      // Warehouse Racks
+      simCtx.fillStyle = '#1e293b';
+      simCtx.fillRect(0, 0, 70, h);
+      simCtx.fillRect(w - 70, 0, 70, h);
+      simCtx.strokeStyle = '#f59e0b';
+      simCtx.lineWidth = 2;
+      simCtx.strokeRect(0, 0, 70, h);
+      simCtx.strokeRect(w - 70, 0, 70, h);
+
+      simCtx.font = 'bold 10px JetBrains Mono';
+      simCtx.fillStyle = '#f59e0b';
+      simCtx.fillText('RACK BAY A', 10, 30);
+      simCtx.fillText('RACK BAY B', w - 65, 30);
+
+      // Turn Arc Trajectory
+      const centerX = w * 0.5;
+      const centerY = h * 0.55;
+      const turnRadiusPx = Math.max(70, 220 - state.turnAngle * 1.8);
+
+      simCtx.beginPath();
+      simCtx.arc(centerX - turnRadiusPx, centerY, turnRadiusPx, -0.4, 0.6);
+      simCtx.strokeStyle = p.isLateralRoll ? 'rgba(239, 68, 68, 0.7)' : 'rgba(56, 189, 248, 0.5)';
+      simCtx.lineWidth = 4;
+      simCtx.setLineDash([8, 6]);
+      simCtx.stroke();
+      simCtx.setLineDash([]);
+
+      // Dynamic position along arc based on simulation progress
+      let travelU = -0.3 + (state.isSimulating ? state.simProgress * 0.75 : 0.35);
+      if (p.isLateralRoll && state.incidentTriggered) {
+        travelU = 0.15; // freeze at tip location
+      }
+
+      const forkPosX = (centerX - turnRadiusPx) + Math.cos(travelU) * turnRadiusPx;
+      const forkPosY = centerY + Math.sin(travelU) * turnRadiusPx;
+      const headingAngle = travelU + Math.PI / 2;
+
+      simCtx.save();
+      simCtx.translate(forkPosX, forkPosY);
+      simCtx.rotate(headingAngle);
+
+      let rollAngle = 0;
+      if (p.isLateralRoll) {
+        rollAngle = state.isSimulating ? state.tipAngle : (state.tipAngle || 0.65);
+      }
+
+      const truckLen = 100;
+      const truckWid = 54;
+
+      // Tire Skid Marks
+      if (state.speed > 5 && state.turnAngle > 15) {
+        simCtx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+        simCtx.lineWidth = 6;
+        simCtx.beginPath();
+        simCtx.moveTo(-truckLen * 0.4, -truckWid * 0.5);
+        simCtx.lineTo(-truckLen * 0.8, -truckWid * 0.6);
+        simCtx.moveTo(-truckLen * 0.4, truckWid * 0.5);
+        simCtx.lineTo(-truckLen * 0.8, truckWid * 0.4);
+        simCtx.stroke();
+      }
+
+      simCtx.rotate(rollAngle);
+
+      // Chassis
+      simCtx.fillStyle = '#f59e0b';
+      drawRoundRect(simCtx, -truckLen * 0.5, -truckWid * 0.5, truckLen, truckWid, 8);
+      simCtx.fill();
+      simCtx.strokeStyle = '#b45309';
+      simCtx.lineWidth = 3;
+      simCtx.stroke();
+
+      // Rear Counterweight
+      simCtx.fillStyle = '#334155';
+      drawRoundRect(simCtx, -truckLen * 0.5, -truckWid * 0.5, 26, truckWid, 6);
+      simCtx.fill();
+
+      // Steer Wheel
+      simCtx.save();
+      simCtx.translate(-truckLen * 0.35, 0);
+      simCtx.rotate((state.turnAngle * Math.PI) / 180);
+      simCtx.fillStyle = '#0f172a';
+      simCtx.fillRect(-10, -5, 20, 10);
+      simCtx.restore();
+
+      // Front Wheels
+      simCtx.fillStyle = '#0f172a';
+      simCtx.fillRect(truckLen * 0.25, -truckWid * 0.55, 22, 10);
+      simCtx.fillRect(truckLen * 0.25, truckWid * 0.55 - 10, 22, 10);
+
+      // Guard Roof
+      simCtx.fillStyle = '#1e293b';
+      simCtx.fillRect(-15, -18, 36, 36);
+      simCtx.strokeStyle = '#94a3b8';
+      simCtx.lineWidth = 1.5;
+      simCtx.strokeRect(-15, -18, 36, 36);
+
+      // Forks
+      simCtx.fillStyle = '#64748b';
+      simCtx.fillRect(truckLen * 0.5, -16, 45, 6);
+      simCtx.fillRect(truckLen * 0.5, 10, 45, 6);
+
+      // Pallet Load
+      if (state.weight > 50) {
+        simCtx.fillStyle = p.isLateralRoll && (rollAngle > 0.2) ? '#dc2626' : '#d97706';
+        simCtx.fillRect(truckLen * 0.5 + 5, -24, 42, 48);
+        simCtx.strokeStyle = '#78350f';
+        simCtx.strokeRect(truckLen * 0.5 + 5, -24, 42, 48);
+
+        simCtx.fillStyle = '#ffffff';
+        simCtx.font = 'bold 9px JetBrains Mono';
+        simCtx.textAlign = 'center';
+        simCtx.fillText(state.weight + ' lb', truckLen * 0.5 + 26, 4);
+      }
+
+      // Dynamic Centrifugal Vector Arrow
+      if (state.speed > 1 && state.turnAngle > 5) {
+        const arrowLength = p.lateralG * 85;
+        simCtx.strokeStyle = '#ef4444';
+        simCtx.lineWidth = 3;
+        simCtx.beginPath();
+        simCtx.moveTo(0, 0);
+        simCtx.lineTo(0, -arrowLength);
+        simCtx.stroke();
+
+        simCtx.fillStyle = '#ef4444';
+        simCtx.beginPath();
+        simCtx.moveTo(-5, -arrowLength + 5);
+        simCtx.lineTo(0, -arrowLength - 4);
+        simCtx.lineTo(5, -arrowLength + 5);
+        simCtx.fill();
+
+        simCtx.font = 'bold 10px JetBrains Mono';
+        simCtx.fillText(`Centrifugal: ${p.lateralG.toFixed(2)} G`, 10, -arrowLength / 2);
+      }
+
+      simCtx.restore();
+    }
+
+    function renderAllCanvases() {
+      try {
+        const p = calculatePhysics();
+        drawStabilityTriangle(p);
+
+        if (state.activeView === 'profile') {
+          drawSideProfileView(p);
+        } else {
+          drawIsometricTurnView(p);
+        }
+      } catch (err) {
+        console.error("Render loop error:", err);
+      }
+    }
+
+    // Expanded 20-Question OSHA 29 CFR 1910.178 Question Bank
+    const quizQuestions = [
+      {
+        q: "1. According to OSHA 29 CFR 1910.178, what points create the boundary of a counterbalanced forklift's Stability Triangle?",
+        options: [
+          "The front bumper, the counterweight, and the top overhead cab guard",
+          "The two front drive wheels and the center pivot pin of the rear steer axle",
+          "The outer four corners of the chassis sheet metal",
+          "The tip of the fork tines and the rear tail lights"
+        ],
+        correct: 1,
+        explanation: "Even with four tires on the concrete, the rear steer axle pivots on a center trunnion pin, forming a 3-point stability triangle."
+      },
+      {
+        q: "2. What happens to the combined Center of Gravity (CG) when an operator raises a 3,000 lb pallet 100 inches high?",
+        options: [
+          "The combined CG moves down closer to the floor, increasing truck stability",
+          "The combined CG remains constant at the chassis frame level",
+          "The combined CG moves upward, drastically shrinking stability margins during any turn or stop",
+          "The load weight cancels out the counterweight leverage completely"
+        ],
+        correct: 2,
+        explanation: "Raising the mast elevates the combined center of gravity. With an elevated CG, even minor turning inertia or floor bumps will cause a sideways tipover."
+      },
+      {
+        q: "3. If a forklift is rated at 4,000 lbs at a standard 24-inch load center, what is its safe capacity if an oversized crate shifts the load center to 48 inches?",
+        options: [
+          "Capacity remains 4,000 lbs if driven under 5 MPH",
+          "Capacity is cut in half to approximately 2,000 lbs due to multiplied moment leverage",
+          "Capacity increases because the crate spans further across the tines",
+          "The operator may carry the load by tilting the mast forward"
+        ],
+        correct: 1,
+        explanation: "By OSHA formula: Actual Cap = Rated Cap × (Rated Center ÷ Actual Center). 4,000 lbs × (24 ÷ 48) = 2,000 lbs maximum allowable load."
+      },
+      {
+        q: "4. During travel on level warehouse floors, what is the OSHA-compliant position for forks and mast?",
+        options: [
+          "Forks elevated 36 inches to clear debris, tilted forward to see the tines",
+          "Forks 4 to 6 inches above floor level, tilted backward just enough to stabilize the load",
+          "Forks flat on the floor sliding along the concrete",
+          "Forks fully raised so pedestrians can walk underneath"
+        ],
+        correct: 1,
+        explanation: "OSHA 1910.178(n)(7) mandates that forks be carried as low as practical (4 to 6 inches) and tilted backward to cradle the product securely."
+      },
+      {
+        q: "5. When driving a forklift with a LOADED pallet up and down an incline or ramp (>10%), which rule must be followed?",
+        options: [
+          "Forks must always point downhill so you can see where you are going",
+          "The load must always point uphill (drive forward going up, and reverse in descent going down)",
+          "Turn sideways across the slope to prevent forward roll",
+          "Shift the transmission to neutral and coast smoothly downhill"
+        ],
+        correct: 1,
+        explanation: "With a load on an incline, the load must point uphill to keep the combined center of gravity well inside the wheel base and prevent forward tipping."
+      },
+      {
+        q: "6. When driving an UNLOADED (empty) forklift up or down a ramp, which way should the forks point?",
+        options: [
+          "Forks must point uphill at all times",
+          "Forks must point downhill (counterweight facing uphill toward the top of the ramp)",
+          "Elevated to maximum height to counterbalance the incline",
+          "Fork position does not matter on ramps when empty"
+        ],
+        correct: 1,
+        explanation: "When empty, the heavy rear counterweight makes up most of the truck's mass. The counterweight must stay uphill to maintain steer and braking traction."
+      },
+      {
+        q: "7. If your forklift begins to tip over sideways (lateral rollover), what is the correct survival protocol?",
+        options: [
+          "Jump out quickly toward the side the truck is falling toward",
+          "Jump out backward over the rear counterweight",
+          "Stay inside the cab, hold firmly to the steering wheel, brace your feet, and lean away from the impact",
+          "Stand up and push against the overhead guard"
+        ],
+        correct: 2,
+        explanation: "Never jump! Operators who attempt to jump are often crushed by the overhead guard ('the flyswatter effect'). Stay buckled in, brace feet, and lean away."
+      },
+      {
+        q: "8. How often does OSHA require a forklift to undergo a visual and operational safety inspection?",
+        options: [
+          "Once a month by the plant manager",
+          "Only when scheduled for annual maintenance",
+          "Before the beginning of each shift (or after each shift if in continuous 24/7 service)",
+          "Only when an indicator light turns red on the dashboard"
+        ],
+        correct: 2,
+        explanation: "OSHA 1910.178(q)(7) specifies that industrial trucks must be examined before being placed in service at least daily or prior to each shift."
+      },
+      {
+        q: "9. What must an operator do when approaching blind intersections, aisle corners, or doorway openings?",
+        options: [
+          "Speed up quickly to clear the intersection before cross traffic arrives",
+          "Slow down, sound the horn, and proceed only when clear",
+          "Flash headlights continuously without slowing down",
+          "Drive on the left side of the aisleway to take a wider turn"
+        ],
+        correct: 1,
+        explanation: "OSHA standard requires drivers to slow down and sound the horn at cross aisles and other locations where vision is obstructed."
+      },
+      {
+        q: "10. What is the fundamental rule regarding pedestrians and elevated loads?",
+        options: [
+          "Pedestrians may walk beneath elevated forks if they wear a hardhat",
+          "No person is ever permitted to stand or walk under an elevated portion of any truck, loaded or empty",
+          "Pedestrians must run quickly if crossing beneath raised tines",
+          "Forks may be walked under if the hydraulic lever is in neutral"
+        ],
+        correct: 1,
+        explanation: "OSHA 1910.178(m)(2) strictly prohibits anyone from standing or passing under the elevated portion of any industrial truck, loaded or empty."
+      },
+      {
+        q: "11. If a bulky load completely blocks your forward view while driving, what must you do?",
+        options: [
+          "Stand up in the cab while driving forward to peek over the boxes",
+          "Drive with the load elevated 8 feet high so you can see beneath it",
+          "Drive the forklift in reverse, looking over your shoulder in the direction of travel (or use a spotter)",
+          "Drive forward slowly relying solely on honking the horn"
+        ],
+        correct: 2,
+        explanation: "When a load obstructs forward visibility, the operator must travel with the load trailing (drive in reverse) or utilize an assigned spotter."
+      },
+      {
+        q: "12. What is the primary cause of lateral (sideways) tipover incidents in industrial warehouses?",
+        options: [
+          "Driving in reverse while honking the horn",
+          "Turning at excessive speed, especially with an elevated carriage or off-center load",
+          "Under-inflated pneumatic drive tires during straight travel",
+          "Using forks that are longer than the wooden pallet"
+        ],
+        correct: 1,
+        explanation: "Centrifugal force from turning at speed pushes the combined center of gravity sideways outside the narrow stability triangle, causing catastrophic rollovers."
+      },
+      {
+        q: "13. What is the rule concerning passengers or extra riders on a standard forklift?",
+        options: [
+          "Passengers may ride on the fork tines if they hold onto the carriage backrest",
+          "Coworkers may stand on the counterweight to balance heavy loads",
+          "Passengers are strictly prohibited unless the manufacturer has provided an authorized second seat and restraint",
+          "One passenger may sit in the operator cab alongside the driver"
+        ],
+        correct: 2,
+        explanation: "Unauthorized passengers are strictly forbidden. No riders are permitted unless a safe, manufacturer-approved seat and belt are provided."
+      },
+      {
+        q: "14. When parking an unattended forklift, what four steps must an operator execute before dismounting?",
+        options: [
+          "Leave forks 12 inches high, engine running, parking brake off",
+          "Fully lower forks flat to the floor, neutralize directional controls, set parking brake, and shut off power",
+          "Tilt mast backward, turn off headlights, leave key in the ignition",
+          "Forks resting on a pallet rack, transmission in reverse, horn disconnected"
+        ],
+        correct: 1,
+        explanation: "OSHA 1910.178(m)(5) requires fully lowering forks, neutralizing directional controls, setting the parking brake, and turning off the power when unattended."
+      },
+      {
+        q: "15. Why does OSHA mandate the use of operator restraint systems (seat belts) on counterbalanced sit-down forklifts?",
+        options: [
+          "To stop drivers from getting out of their seats while driving down aisles",
+          "To keep the operator safely inside the protective cage if the forklift tips over",
+          "To prevent the forklift from exceeding warehouse speed limits",
+          "Seat belts are optional recommendations and not enforced"
+        ],
+        correct: 1,
+        explanation: "Seat belts keep the operator securely within the overhead cage perimeter during a tipover, preventing them from being thrown or trapped beneath the roll cage."
+      },
+      {
+        q: "16. Before driving a forklift across a dock board (bridge plate) into a highway trailer, what must be verified?",
+        options: [
+          "Trailer wheels are chocked or secured by a dock lock, trailer floor is sound, and bridge plate is anchored",
+          "The trailer lights are switched off",
+          "The truck engine is revved to maximum RPM",
+          "The warehouse bay door is kept half closed"
+        ],
+        correct: 0,
+        explanation: "Trailer brakes must be locked or wheels chocked, dock board capacity checked and secured, and trailer floor checked to prevent dock separation."
+      },
+      {
+        q: "17. What hazardous gas is produced during lead-acid forklift battery charging that requires a dedicated, well-ventilated charging station?",
+        options: [
+          "Carbon Monoxide (CO)",
+          "Hydrogen gas (flammable and explosive)",
+          "Chlorine gas",
+          "Nitrous oxide"
+        ],
+        correct: 1,
+        explanation: "Charging industrial lead-acid batteries releases flammable hydrogen gas. Battery rooms must have proper ventilation and no open flames or smoking."
+      },
+      {
+        q: "18. When picking up an off-center or unevenly distributed load, what danger exists?",
+        options: [
+          "The mast tilt cylinders will automatically shut down",
+          "The combined center of gravity shifts toward the heavy side, increasing the risk of lateral tipover",
+          "The truck will consume twice as much fuel",
+          "The steer axle will lock up"
+        ],
+        correct: 1,
+        explanation: "Uneven loads move the combined CG sideways toward the heavier side, narrowing the stability margin on that side and making rollovers likely during turns."
+      },
+      {
+        q: "19. When must an operator tilt the mast forward?",
+        options: [
+          "Whenever travelling down straight aisles at normal speed",
+          "Only when the load is directly over the stack or rack placement position and ready for deposit",
+          "Whenever descending steep declines to clear the pavement",
+          "Whenever picking up long lumber bundles"
+        ],
+        correct: 1,
+        explanation: "Forks should only be tilted forward when positioning or retrieving a load directly over a rack or stack. During travel, the mast must always tilt back."
+      },
+      {
+        q: "20. If an operator discovers defective brakes or a hydraulic fluid leak during their pre-shift inspection, what action is required?",
+        options: [
+          "Drive very slowly and finish the workday shift before reporting it",
+          "Immediately tag the forklift out of service, report the defect, and do not operate it until repaired",
+          "Top off the fluid with water and continue working",
+          "Turn up the horn volume to compensate for weak brakes"
+        ],
+        correct: 1,
+        explanation: "OSHA 1910.178(q)(1) states that any power-operated industrial truck not in safe operating condition shall be immediately removed from service until repaired."
+      }
+    ];
+
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+    let studentAnswers = [];
+
+    const quizModal = document.getElementById('quizModal');
+    const openQuizBtn = document.getElementById('openQuizBtn');
+    const closeQuizBtn = document.getElementById('closeQuizBtn');
+    
+    const quizActiveContainer = document.getElementById('quizActiveContainer');
+    const quizResultContainer = document.getElementById('quizResultContainer');
+    const quizProgress = document.getElementById('quizProgress');
+    const quizProgressTrack = document.getElementById('quizProgressTrack');
+    const quizScoreEl = document.getElementById('quizScore');
+    const quizPercentEl = document.getElementById('quizPercent');
+    const quizQuestionEl = document.getElementById('quizQuestion');
+    const quizOptionsEl = document.getElementById('quizOptions');
+    const quizExplanationEl = document.getElementById('quizExplanation');
+    const quizNextBtn = document.getElementById('quizNextBtn');
+
+    const resultIcon = document.getElementById('resultIcon');
+    const resultHeading = document.getElementById('resultHeading');
+    const resultSummary = document.getElementById('resultSummary');
+    const certClaimBox = document.getElementById('certClaimBox');
+    const failRetryBox = document.getElementById('failRetryBox');
+    const studentNameInput = document.getElementById('studentNameInput');
+    const studentSchoolInput = document.getElementById('studentSchoolInput');
+    const generateCertBtn = document.getElementById('generateCertBtn');
+    const retryQuizBtn = document.getElementById('retryQuizBtn');
+
+    // Certificate Elements
+    const certificateModal = document.getElementById('certificateModal');
+    const closeCertModalBtn = document.getElementById('closeCertModalBtn');
+    const printCertBtn = document.getElementById('printCertBtn');
+    const downloadCertImageBtn = document.getElementById('downloadCertImageBtn');
+    const certStudentName = document.getElementById('certStudentName');
+    const certStudentOrg = document.getElementById('certStudentOrg');
+    const certScorePct = document.getElementById('certScorePct');
+    const certDateText = document.getElementById('certDateText');
+    const certIdNumber = document.getElementById('certIdNumber');
+    const certCandidateSignature = document.getElementById('certCandidateSignature');
+    const certExportCanvas = document.getElementById('certExportCanvas');
+
+    openQuizBtn.addEventListener('click', () => {
+      getAudioContext();
+      startQuizSession();
+    });
+
+    closeQuizBtn.addEventListener('click', () => {
+      quizModal.classList.add('hidden');
+    });
+
+    function startQuizSession() {
+      currentQuizIndex = 0;
+      quizScore = 0;
+      studentAnswers = [];
+      quizActiveContainer.classList.remove('hidden');
+      quizResultContainer.classList.add('hidden');
+      loadQuizQuestion();
+      quizModal.classList.remove('hidden');
+    }
+
+    function loadQuizQuestion() {
+      const qData = quizQuestions[currentQuizIndex];
+      const currentNum = currentQuizIndex + 1;
+      const totalNum = quizQuestions.length;
+
+      quizProgress.textContent = `QUESTION ${currentNum} OF ${totalNum}`;
+      quizScoreEl.textContent = `Score: ${quizScore}/${currentQuizIndex}`;
+      
+      const pct = currentQuizIndex > 0 ? Math.round((quizScore / currentQuizIndex) * 100) : 0;
+      quizPercentEl.textContent = `${pct}% Correct`;
+      quizProgressTrack.style.width = `${(currentQuizIndex / totalNum) * 100}%`;
+
+      quizQuestionEl.textContent = qData.q;
+      quizOptionsEl.innerHTML = '';
+      quizExplanationEl.classList.add('hidden');
+      quizNextBtn.classList.add('hidden');
+
+      qData.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-3 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 transition flex items-start space-x-3 cursor-pointer";
+        btn.innerHTML = `<span class="w-6 h-6 rounded-full bg-slate-700 text-slate-300 font-mono font-bold flex items-center justify-center text-[11px] shrink-0 mt-0.5">${String.fromCharCode(65 + idx)}</span> <span class="flex-1 leading-snug">${opt}</span>`;
+        
+        btn.addEventListener('click', () => {
+          handleQuizAnswer(idx, btn);
+        });
+        quizOptionsEl.appendChild(btn);
+      });
+    }
+
+    function handleQuizAnswer(selectedIdx, selectedBtn) {
+      const qData = quizQuestions[currentQuizIndex];
+      const buttons = quizOptionsEl.querySelectorAll('button');
+      buttons.forEach(b => b.disabled = true);
+
+      studentAnswers.push({
+        questionIndex: currentQuizIndex,
+        selected: selectedIdx,
+        isCorrect: selectedIdx === qData.correct
+      });
+
+      quizExplanationEl.classList.remove('hidden');
+
+      if (selectedIdx === qData.correct) {
+        quizScore++;
+        playSuccessChime();
+        selectedBtn.classList.remove('bg-slate-800/80', 'border-slate-700');
+        selectedBtn.classList.add('border-emerald-500', 'bg-emerald-950/70', 'text-emerald-100');
+        quizExplanationEl.className = "p-3.5 rounded-xl text-xs leading-relaxed bg-emerald-950/80 border border-emerald-500/60 text-emerald-200 shadow-sm";
+        quizExplanationEl.innerHTML = `<strong>✅ Correct!</strong> ${qData.explanation}`;
+      } else {
+        playTone(180, 0.3, 'sawtooth', 0.2);
+        selectedBtn.classList.remove('bg-slate-800/80', 'border-slate-700');
+        selectedBtn.classList.add('border-red-500', 'bg-red-950/70', 'text-red-100');
+        buttons[qData.correct].classList.remove('bg-slate-800/80', 'border-slate-700');
+        buttons[qData.correct].classList.add('border-emerald-500', 'bg-emerald-950/70', 'text-emerald-100');
+        quizExplanationEl.className = "p-3.5 rounded-xl text-xs leading-relaxed bg-red-950/80 border border-red-500/60 text-red-200 shadow-sm";
+        quizExplanationEl.innerHTML = `<strong>❌ Incorrect.</strong> ${qData.explanation}`;
+      }
+
+      quizScoreEl.textContent = `Score: ${quizScore}/${currentQuizIndex + 1}`;
+      const updatedPct = Math.round((quizScore / (currentQuizIndex + 1)) * 100);
+      quizPercentEl.textContent = `${updatedPct}% Correct`;
+
+      quizNextBtn.classList.remove('hidden');
+      quizNextBtn.textContent = (currentQuizIndex < quizQuestions.length - 1) ? "Next Question ➔" : "View Final Certification Results";
+    }
+
+    quizNextBtn.addEventListener('click', () => {
+      currentQuizIndex++;
+      if (currentQuizIndex < quizQuestions.length) {
+        loadQuizQuestion();
+      } else {
+        finishCertificationExam();
+      }
+    });
+
+    function finishCertificationExam() {
+      quizActiveContainer.classList.add('hidden');
+      quizNextBtn.classList.add('hidden');
+      quizResultContainer.classList.remove('hidden');
+      quizProgressTrack.style.width = '100%';
+
+      const finalPercentage = Math.round((quizScore / quizQuestions.length) * 100);
+      const hasPassed = quizScore >= 14; // 70% threshold for OSHA safety exam
+
+      if (hasPassed) {
+        playSuccessChime();
+        resultIcon.textContent = '🎖️';
+        resultHeading.textContent = 'EXAM PASSED: CERTIFICATION EARNED!';
+        resultHeading.className = 'font-tech text-xl font-bold uppercase tracking-wide text-emerald-400';
+        resultSummary.textContent = `Outstanding! You answered ${quizScore} out of ${quizQuestions.length} questions correctly (${finalPercentage}%). You have met the OSHA 1910.178 academic safety standards. Enter your details below to claim your official certificate.`;
+        certClaimBox.classList.remove('hidden');
+        failRetryBox.classList.add('hidden');
+      } else {
+        playCrashSound();
+        resultIcon.textContent = '⚠️';
+        resultHeading.textContent = 'MINIMUM SCORE NOT MET';
+        resultHeading.className = 'font-tech text-xl font-bold uppercase tracking-wide text-amber-400';
+        resultSummary.textContent = `You scored ${quizScore} out of ${quizQuestions.length} (${finalPercentage}%). OSHA safety certification requires at least 70% (14 correct answers). Review safe operating rules and test your knowledge again.`;
+        certClaimBox.classList.add('hidden');
+        failRetryBox.classList.remove('hidden');
+      }
+    }
+
+    retryQuizBtn.addEventListener('click', () => {
+      startQuizSession();
+    });
+
+    // Generate certificate view
+    generateCertBtn.addEventListener('click', () => {
+      const studentName = studentNameInput.value.trim() || 'Certified Student Operator';
+      const studentOrg = studentSchoolInput.value.trim() || 'Industrial Manufacturing & Safety Technology';
+      const finalPercentage = Math.round((quizScore / quizQuestions.length) * 100);
+      
+      const now = new Date();
+      const dateString = now.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      const certId = 'OSHA-FL-' + now.getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
+
+      // Populate DOM certificate elements
+      certStudentName.textContent = studentName;
+      certCandidateSignature.textContent = studentName;
+      certStudentOrg.textContent = studentOrg;
+      certScorePct.textContent = `${finalPercentage}% (${quizScore}/20)`;
+      certDateText.textContent = dateString;
+      certIdNumber.textContent = certId;
+
+      quizModal.classList.add('hidden');
+      certificateModal.classList.remove('hidden');
+    });
+
+    closeCertModalBtn.addEventListener('click', () => {
+      certificateModal.classList.add('hidden');
+    });
+
+    printCertBtn.addEventListener('click', () => {
+      window.print();
+    });
+
+    // Render high-resolution certificate to Canvas and trigger PNG file download
+    downloadCertImageBtn.addEventListener('click', () => {
+      try {
+        const canvas = certExportCanvas;
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width;
+        const h = canvas.height;
+
+        // Background parchment
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+        bgGrad.addColorStop(0, '#fefbf3');
+        bgGrad.addColorStop(0.5, '#ffffff');
+        bgGrad.addColorStop(1, '#fbf3de');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Ornate Border
+        ctx.strokeStyle = '#b45309';
+        ctx.lineWidth = 14;
+        ctx.strokeRect(24, 24, w - 48, h - 48);
+
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(38, 38, w - 76, h - 76);
+
+        // Corner stars
+        ctx.font = 'bold 24px Chakra Petch, sans-serif';
+        ctx.fillStyle = '#b45309';
+        ctx.fillText('★ ★ ★', 60, 75);
+        ctx.fillText('★ ★ ★', w - 160, 75);
+        ctx.fillText('★ ★ ★', 60, h - 60);
+        ctx.fillText('★ ★ ★', w - 160, h - 60);
+
+        // Watermark
+        ctx.save();
+        ctx.translate(w / 2, h / 2);
+        ctx.rotate(-0.16);
+        ctx.font = 'bold 120px Chakra Petch, sans-serif';
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.035)';
+        ctx.textAlign = 'center';
+        ctx.fillText('OSHA 1910.178', 0, 20);
+        ctx.restore();
+
+        // Header
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 18px JetBrains Mono, monospace';
+        ctx.fillStyle = '#92400e';
+        ctx.fillText('INDUSTRIAL MANUFACTURING & SAFETY EDUCATION', w / 2, 115);
+
+        ctx.font = 'bold 44px Chakra Petch, sans-serif';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText('CERTIFICATE OF COMPLETION', w / 2, 175);
+
+        ctx.font = '600 20px JetBrains Mono, monospace';
+        ctx.fillStyle = '#b45309';
+        ctx.fillText('INTRODUCTION TO POWERED INDUSTRIAL TRUCK & FORKLIFT SAFETY', w / 2, 215);
+
+        // Ribbon divider
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(w / 2 - 260, 245);
+        ctx.lineTo(w / 2 + 260, 245);
+        ctx.stroke();
+
+        ctx.fillStyle = '#b45309';
+        ctx.beginPath();
+        ctx.arc(w / 2, 245, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Recipient
+        ctx.font = 'italic 20px Georgia, serif';
+        ctx.fillStyle = '#475569';
+        ctx.fillText('This certifies that', w / 2, 290);
+
+        ctx.font = 'bold 46px Chakra Petch, sans-serif';
+        ctx.fillStyle = '#0f172a';
+        ctx.fillText(certStudentName.textContent, w / 2, 355);
+
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        const textW = ctx.measureText(certStudentName.textContent).width;
+        ctx.moveTo(w / 2 - (textW / 2) - 15, 370);
+        ctx.lineTo(w / 2 + (textW / 2) + 15, 370);
+        ctx.stroke();
+
+        ctx.font = '500 18px Inter, sans-serif';
+        ctx.fillStyle = '#475569';
+        ctx.fillText(certStudentOrg.textContent, w / 2, 405);
+
+        // Body Text
+        ctx.font = '18px Inter, sans-serif';
+        ctx.fillStyle = '#334155';
+        ctx.fillText('has successfully mastered OSHA 29 CFR 1910.178 powered industrial truck safety principles,', w / 2, 460);
+        ctx.fillText('including the Stability Triangle, dynamic longitudinal and lateral load moments, carriage elevation safety,', w / 2, 490);
+        ctx.fillText('and transit stability protocols, achieving a verified passing examination grade.', w / 2, 520);
+
+        // Metrics Banner Box
+        ctx.fillStyle = 'rgba(254, 243, 199, 0.8)';
+        ctx.fillRect(w / 2 - 380, 560, 760, 70);
+        ctx.strokeStyle = '#fcd34d';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(w / 2 - 380, 560, 760, 70);
+
+        ctx.font = 'bold 13px JetBrains Mono, monospace';
+        ctx.fillStyle = '#78350f';
+        ctx.fillText('EXAM SCORE: ' + certScorePct.textContent, w / 2 - 250, 600);
+        ctx.fillText('DATE: ' + certDateText.textContent, w / 2, 600);
+        ctx.fillText('ID: ' + certIdNumber.textContent, w / 2 + 250, 600);
+
+        // Bottom Signatures & Seal
+        // Left signature line
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(140, 740);
+        ctx.lineTo(380, 740);
+        ctx.stroke();
+
+        ctx.font = 'italic 22px Georgia, serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText('OSHA Training Curriculum', 260, 730);
+
+        ctx.font = 'bold 12px JetBrains Mono, monospace';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('CERTIFIED SAFETY INSTRUCTOR', 260, 760);
+
+        // Center Gold Seal
+        ctx.beginPath();
+        ctx.arc(w / 2, 730, 48, 0, Math.PI * 2);
+        ctx.fillStyle = '#d97706';
+        ctx.fill();
+        ctx.strokeStyle = '#78350f';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(w / 2, 730, 42, 0, Math.PI * 2);
+        ctx.fillStyle = '#fef3c7';
+        ctx.fill();
+
+        ctx.font = 'bold 11px Chakra Petch, sans-serif';
+        ctx.fillStyle = '#451a03';
+        ctx.fillText('★ OFFICIAL ★', w / 2, 725);
+        ctx.fillText('OSHA SAFETY', w / 2, 740);
+
+        // Right signature line
+        ctx.beginPath();
+        ctx.moveTo(w - 380, 740);
+        ctx.lineTo(w - 140, 740);
+        ctx.stroke();
+
+        ctx.font = 'italic 22px Georgia, serif';
+        ctx.fillStyle = '#1e293b';
+        ctx.fillText(certStudentName.textContent, w - 260, 730);
+
+        ctx.font = 'bold 12px JetBrains Mono, monospace';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('STUDENT OPERATOR CANDIDATE', w - 260, 760);
+
+        // Trigger file download
+        const imgData = canvas.toDataURL('image/png');
+        const downloadLink = document.createElement('a');
+        downloadLink.download = `Forklift_Safety_Certificate_${certStudentName.textContent.replace(/\s+/g, '_')}.png`;
+        downloadLink.href = imgData;
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+        document.body.removeChild(downloadLink);
+        playSuccessChime();
+      } catch (e) {
+        console.error("Certificate export failed:", e);
+      }
+    });
+
+    window.onload = function() {
+      resizeSimCanvas();
+      updateStateFromInputs();
+      renderAllCanvases();
+    };
+  </script>
+</body>
+</html>

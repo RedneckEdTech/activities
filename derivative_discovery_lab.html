@@ -1,0 +1,2736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Derivative Discovery Lab</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at top right, #f8faff 0%, #eef2ff 40%, #fdf4ff 100%);
+    }
+    .mono-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .custom-slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #4f46e5;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(79, 70, 229, 0.4);
+      border: 3px solid #ffffff;
+      transition: transform 0.15s ease, background-color 0.15s;
+    }
+    .custom-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+      background: #4338ca;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(226, 232, 240, 0.85);
+    }
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .floating-badge {
+      animation: floatSlow 3s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 antialiased flex flex-col justify-between selection:bg-indigo-100 selection:text-indigo-900">
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-indigo-100 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-fuchsia-500 flex items-center justify-center text-white font-black text-xl shadow-md shadow-indigo-200">
+          f'
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-xl font-bold tracking-tight text-slate-900">Derivative Discovery Lab</h1>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">Secondary Mathematics Interactive</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2 sm:space-x-4">
+        <div class="hidden sm:flex items-center space-x-2 bg-indigo-50/70 border border-indigo-100 px-3 py-1.5 rounded-xl">
+          <span class="text-xs font-semibold text-indigo-700">Lab Progress:</span>
+          <div class="w-24 bg-indigo-200 rounded-full h-2 overflow-hidden">
+            <div id="overall-progress-bar" class="bg-indigo-600 h-2 rounded-full transition-all duration-300" style="width: 20%"></div>
+          </div>
+          <span id="overall-progress-text" class="text-xs font-bold text-indigo-900">20%</span>
+        </div>
+
+        <button id="sound-toggle-btn" class="p-2 rounded-xl text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 transition" title="Toggle Sound Feedback">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation tabs (5 interactive modules) -->
+    <div class="border-t border-slate-100 bg-slate-50/60">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex overflow-x-auto space-x-2 py-2 text-xs font-bold scrollbar-none">
+        <button id="tab-btn-1" onclick="switchTab(1)" class="px-3.5 py-1.5 rounded-xl bg-white text-indigo-700 shadow-sm transition whitespace-nowrap">
+          1. Secant → Tangent Limit
+        </button>
+        <button id="tab-btn-2" onclick="switchTab(2)" class="px-3.5 py-1.5 rounded-xl text-slate-600 hover:text-indigo-700 hover:bg-white/60 transition whitespace-nowrap">
+          2. Step-by-Step Rules
+        </button>
+        <button id="tab-btn-3" onclick="switchTab(3)" class="px-3.5 py-1.5 rounded-xl text-slate-600 hover:text-indigo-700 hover:bg-white/60 transition whitespace-nowrap">
+          3. Slope Tracer $f'(x)$
+        </button>
+        <button id="tab-btn-4" onclick="switchTab(4)" class="px-3.5 py-1.5 rounded-xl text-slate-600 hover:text-indigo-700 hover:bg-white/60 transition whitespace-nowrap">
+          4. Derivative Optimization
+        </button>
+        <button id="tab-btn-5" onclick="switchTab(5)" class="px-3.5 py-1.5 rounded-xl text-slate-600 hover:text-indigo-700 hover:bg-white/60 transition whitespace-nowrap">
+          5. Mastery Arena (10 Randomized)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTAINER ==================== -->
+  <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ==================== SECTION 1: SECANT TO TANGENT ==================== -->
+    <section id="section-1" class="tab-section block space-y-6">
+      <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+          <div>
+            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-bold mb-2">
+              <span>Goal 1 of 5 • Limit Definition</span>
+            </div>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">The Birth of the Derivative</h2>
+            <p class="text-slate-600 text-sm mt-1 max-w-2xl">
+              Watch how the <strong>average rate of change</strong> (secant slope $\frac{\Delta y}{\Delta x}$) morphs into the <strong>instantaneous rate of change</strong> (tangent slope) as the step size $h \to 0$.
+            </p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button id="btn-animate-h" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center space-x-2">
+              <span>▶ Animate $h \to 0$</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+          <!-- Canvas Visualizer -->
+          <div class="lg:col-span-8 bg-slate-950 p-4 rounded-3xl shadow-xl flex flex-col justify-between border border-slate-800">
+            <div class="flex items-center justify-between text-xs text-slate-300 font-bold mb-2 px-2">
+              <span>Graph: $f(x) = x^2$</span>
+              <span class="text-emerald-400 font-mono">Tangent Slope = <span id="tangent-slope-display">2.00</span></span>
+            </div>
+            <div class="h-[340px] sm:h-[400px] w-full">
+              <canvas id="secantCanvas" class="w-full h-full rounded-2xl bg-slate-900"></canvas>
+            </div>
+            <div class="mt-3 flex flex-wrap items-center justify-between text-[11px] text-slate-400 px-2 gap-2">
+              <span class="flex items-center space-x-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-400 inline-block"></span><span>Curve $f(x)$</span></span>
+              <span class="flex items-center space-x-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block"></span><span>Secant Line ($m_{\text{sec}}$)</span></span>
+              <span class="flex items-center space-x-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span><span>Instantaneous Tangent</span></span>
+            </div>
+          </div>
+
+          <!-- Controls & Mathematical Live Derivation -->
+          <div class="lg:col-span-4 flex flex-col justify-between space-y-4">
+            <div class="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-5 space-y-4">
+              <h3 class="font-bold text-slate-900 text-sm">Interactive Controls</h3>
+
+              <div>
+                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                  <label for="slider-x">Fixed Point $x_0$:</label>
+                  <span id="slider-x-val" class="font-mono text-indigo-700 font-extrabold">1.0</span>
+                </div>
+                <input id="slider-x" type="range" min="0.2" max="3.0" step="0.1" value="1.0" class="custom-slider w-full h-2.5 bg-slate-200 rounded-lg cursor-pointer">
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                  <label for="slider-h">Step Increment $h = \Delta x$:</label>
+                  <span id="slider-h-val" class="font-mono text-amber-600 font-extrabold">1.50</span>
+                </div>
+                <input id="slider-h" type="range" min="0.02" max="2.5" step="0.02" value="1.50" class="custom-slider w-full h-2.5 bg-slate-200 rounded-lg cursor-pointer">
+              </div>
+            </div>
+
+            <!-- Mathematical Breakdown Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+              <h4 class="text-xs uppercase font-extrabold tracking-wider text-slate-500">Live Difference Quotient</h4>
+              <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 font-mono text-xs text-slate-800 space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-slate-500">$\Delta y = f(x+h) - f(x)$:</span>
+                  <span id="math-delta-y" class="font-bold text-indigo-600">3.75</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">$\Delta x = h$:</span>
+                  <span id="math-delta-x" class="font-bold text-amber-600">1.50</span>
+                </div>
+                <div class="border-t border-slate-200 pt-2 flex justify-between text-sm">
+                  <span class="font-bold text-slate-700">$m_{\text{sec}} = \frac{\Delta y}{h}$:</span>
+                  <span id="math-secant-slope" class="font-black text-amber-600">2.50</span>
+                </div>
+              </div>
+
+              <div id="limit-reached-banner" class="hidden p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold">
+                ✨ $h \approx 0$! The secant line has collapsed into the exact tangent line!
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SECTION 2: STEP-BY-STEP RULES SCRUBBER ==================== -->
+    <section id="section-2" class="tab-section hidden space-y-6">
+      <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+          <div>
+            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-xs font-bold mb-2">
+              <span>Goal 2 of 5 • Differentiation Rules</span>
+            </div>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Step-by-Step Derivative Scrubber</h2>
+            <p class="text-slate-600 text-sm mt-1 max-w-2xl">
+              Select any differentiation rule. Drag the progression slider forward or use the play button to advance step-by-step through problem setup, rule decomposition, algebraic reduction, and final derivative calculation with live curve previews!
+            </p>
+          </div>
+
+          <!-- Custom Mathematical Dropdown (KaTeX formatted exponents) -->
+          <div class="relative z-30" id="rule-dropdown-container">
+            <button id="rule-dropdown-btn" type="button" aria-haspopup="true" aria-expanded="false" class="flex items-center justify-between space-x-3 bg-white border-2 border-indigo-200 hover:border-indigo-400 text-slate-800 font-bold text-xs rounded-xl px-4 py-2.5 shadow-sm transition focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[270px] sm:min-w-[340px]">
+              <span id="rule-dropdown-selected" class="flex items-center truncate text-left">
+                <!-- Dynamically populated with rendered KaTeX exponents -->
+              </span>
+              <svg id="rule-dropdown-arrow" class="w-4 h-4 text-indigo-600 transition-transform duration-200 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <!-- Dropdown Menu items with proper math rendering -->
+            <div id="rule-dropdown-menu" class="hidden absolute right-0 sm:right-auto sm:left-0 mt-2 w-72 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 max-h-96 overflow-y-auto">
+              <!-- Dynamically rendered by JS -->
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+              <span class="text-xs uppercase font-extrabold tracking-wider text-indigo-400">Step Scrubber Advancement</span>
+              <h3 id="step-title" class="text-xl font-extrabold text-white mt-0.5">Step 1: Identify Function & Strategy</h3>
+            </div>
+            <div class="flex items-center space-x-3">
+              <button id="step-prev-btn" class="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 transition">← Prev</button>
+              <span id="step-indicator-text" class="text-xs font-mono bg-indigo-950 border border-indigo-500/40 text-indigo-300 px-3 py-1.5 rounded-xl">Step 1 / 4</span>
+              <button id="step-next-btn" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition">Next →</button>
+              <button id="step-autoplay-btn" class="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-md transition flex items-center space-x-1">
+                <span>▶ Auto Play</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Step Progression Slider -->
+          <div class="relative mb-6 px-2">
+            <input id="step-slider" type="range" min="1" max="4" step="1" value="1" class="custom-slider w-full h-3 bg-slate-800 rounded-lg cursor-pointer">
+            <div class="flex justify-between text-xs text-slate-400 mt-2 font-semibold">
+              <span class="cursor-pointer hover:text-white" onclick="setStep(1)">1. Given Setup</span>
+              <span class="cursor-pointer hover:text-white" onclick="setStep(2)">2. Rule Applied</span>
+              <span class="cursor-pointer hover:text-white" onclick="setStep(3)">3. Simplification</span>
+              <span class="cursor-pointer hover:text-white text-emerald-400" onclick="setStep(4)">4. Final $f'(x)$</span>
+            </div>
+          </div>
+
+          <!-- Active Math Render Stage with Side-by-side Visual Preview Canvas -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+            <div class="lg:col-span-8 bg-slate-950/90 rounded-2xl border border-slate-800 p-6 min-h-[220px] flex flex-col justify-center">
+              <div id="step-math-container" class="text-center text-lg sm:text-2xl text-indigo-200 py-3 font-semibold overflow-x-auto">
+                <!-- Rendered via KaTeX in JS -->
+              </div>
+              <div id="step-explanation" class="mt-4 p-4 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300 text-sm leading-relaxed">
+                <!-- Dynamic step pedagogy text -->
+              </div>
+            </div>
+
+            <!-- Mini Interactive Rule Visualizer Canvas -->
+            <div class="lg:col-span-4 bg-slate-950 rounded-2xl border border-slate-800 p-4 flex flex-col justify-between">
+              <div class="flex items-center justify-between text-xs text-slate-300 mb-2">
+                <span class="font-bold text-indigo-400" id="rule-canvas-title">Curve & Rate Visualizer</span>
+                <span class="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-400 font-mono">Dynamic</span>
+              </div>
+              <div class="h-[150px] w-full">
+                <canvas id="ruleCanvas" class="w-full h-full rounded-xl bg-slate-900"></canvas>
+              </div>
+              <div class="mt-2 text-[11px] text-slate-400 flex justify-between items-center">
+                <span id="rule-canvas-label">Original: $f(x)$ vs $f'(x)$</span>
+                <span class="text-emerald-400 font-mono font-bold" id="rule-canvas-stat">Step 1</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pedagogical tip pill -->
+          <div class="mt-6 flex items-start space-x-3 bg-indigo-900/30 border border-indigo-700/40 p-4 rounded-2xl">
+            <div class="text-xl">💡</div>
+            <p id="step-tip-text" class="text-xs text-indigo-200/90 leading-relaxed font-medium">
+              Pro-Tip: Always simplify terms before taking derivatives when possible to save algebra steps!
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SECTION 3: SLOPE TRACER & DERIVATIVE PLOTTER ==================== -->
+    <section id="section-3" class="tab-section hidden space-y-6">
+      <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+          <div>
+            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold mb-2">
+              <span>Goal 3 of 5 • Graph Connections</span>
+            </div>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">The Slope Tracer: Drawing $f'(x)$</h2>
+            <p class="text-slate-600 text-sm mt-1 max-w-2xl">
+              Move the pointer along the curve $f(x)$ on the top graph. Watch how the instantaneous slope value creates the points on the derivative graph $f'(x)$ below!
+            </p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button id="trace-reset-btn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition">
+              Reset Plot
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+          <div class="lg:col-span-8 space-y-4">
+            <div class="bg-slate-950 p-4 rounded-2xl shadow-inner border border-slate-800">
+              <div class="flex justify-between items-center text-xs text-slate-300 font-bold mb-2 px-1">
+                <span class="text-cyan-400">Original Function: $f(x) = \frac{1}{3}x^3 - x$</span>
+                <span class="text-slate-400 font-mono">Drag slider below to trace</span>
+              </div>
+              <div class="h-[210px] w-full">
+                <canvas id="canvasTop" class="w-full h-full rounded-xl bg-slate-900"></canvas>
+              </div>
+            </div>
+
+            <div class="bg-slate-950 p-4 rounded-2xl shadow-inner border border-slate-800">
+              <div class="flex justify-between items-center text-xs text-slate-300 font-bold mb-2 px-1">
+                <span class="text-fuchsia-400">Derivative Curve: $f'(x) = x^2 - 1$</span>
+                <span class="text-emerald-400 font-mono text-[11px]" id="slope-tracer-readout">Slope = 0.00</span>
+              </div>
+              <div class="h-[210px] w-full">
+                <canvas id="canvasBottom" class="w-full h-full rounded-xl bg-slate-900"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tracer Slider & Key Concepts -->
+          <div class="lg:col-span-4 flex flex-col justify-between space-y-4">
+            <div class="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-5 space-y-4">
+              <h3 class="font-bold text-slate-900 text-sm">Slope Position Scrubber</h3>
+              <div>
+                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                  <label for="slider-trace-x">Scrub Position $x$:</label>
+                  <span id="slider-trace-x-val" class="font-mono text-indigo-700 font-extrabold">-2.0</span>
+                </div>
+                <input id="slider-trace-x" type="range" min="-2.4" max="2.4" step="0.05" value="-2.0" class="custom-slider w-full h-2.5 bg-slate-200 rounded-lg cursor-pointer">
+              </div>
+
+              <!-- Animated Auto Play button -->
+              <button id="btn-trace-play" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center space-x-2">
+                <span>▶ Auto Trace Across Domain</span>
+              </button>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+              <h4 class="text-xs uppercase font-extrabold tracking-wider text-slate-500">Key Calculus Insights</h4>
+              <ul class="text-xs space-y-2 text-slate-600">
+                <li class="flex items-start space-x-2">
+                  <span class="text-indigo-600 font-bold">•</span>
+                  <span>When original curve has a <strong>horizontal tangent</strong> (flat peak/trough), $f'(x) = 0$ (crosses the horizontal axis).</span>
+                </li>
+                <li class="flex items-start space-x-2">
+                  <span class="text-emerald-600 font-bold">•</span>
+                  <span>When $f(x)$ is increasing (slanted up), $f'(x) > 0$ (above horizontal axis).</span>
+                </li>
+                <li class="flex items-start space-x-2">
+                  <span class="text-rose-600 font-bold">•</span>
+                  <span>When $f(x)$ is decreasing, $f'(x) < 0$ (below horizontal axis).</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SECTION 4: DERIVATIVE OPTIMIZATION ==================== -->
+    <section id="section-4" class="tab-section hidden space-y-6">
+      <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+          <div>
+            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-700 text-xs font-bold mb-2">
+              <span>Goal 4 of 5 • Real-World Applications</span>
+            </div>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Derivative Optimization Laboratory</h2>
+            <p class="text-slate-600 text-sm mt-1 max-w-2xl">
+              Use calculus to find extrema (maxima and minima). Model real geometry, take derivatives, solve for critical points $\frac{df}{dx} = 0$, and verify with the Second Derivative Test!
+            </p>
+          </div>
+
+          <!-- Optimization Scenario Selector -->
+          <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-2xl">
+            <button id="opt-btn-box" onclick="setOptScenario('box')" class="px-3.5 py-1.5 rounded-xl bg-white text-indigo-700 font-bold text-xs shadow-sm transition">
+              📦 Open-Top Box
+            </button>
+            <button id="opt-btn-fence" onclick="setOptScenario('fence')" class="px-3.5 py-1.5 rounded-xl text-slate-600 font-bold text-xs hover:text-indigo-700 transition">
+              🌾 River Fence
+            </button>
+            <button id="opt-btn-can" onclick="setOptScenario('can')" class="px-3.5 py-1.5 rounded-xl text-slate-600 font-bold text-xs hover:text-indigo-700 transition">
+              🥫 Can Surface Area
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6">
+          <!-- Dual Simulation Visualizer (3D Geometry & Calculus Curve) -->
+          <div class="lg:col-span-8 space-y-4">
+            <!-- Geometric 3D / 2D Model Canvas -->
+            <div class="bg-slate-950 p-4 rounded-3xl shadow-xl border border-slate-800">
+              <div class="flex items-center justify-between text-xs text-slate-300 font-bold mb-2 px-2">
+                <span id="opt-geo-title" class="text-cyan-400">Physical Model: 2D Cutout & 3D Folded Shape</span>
+                <span id="opt-geo-stat" class="font-mono text-emerald-400">x = 2.00 cm</span>
+              </div>
+              <div class="h-[210px] w-full">
+                <canvas id="optGeometryCanvas" class="w-full h-full rounded-2xl bg-slate-900"></canvas>
+              </div>
+            </div>
+
+            <!-- Calculus Objective Function Graph Canvas -->
+            <div class="bg-slate-950 p-4 rounded-3xl shadow-xl border border-slate-800">
+              <div class="flex items-center justify-between text-xs text-slate-300 font-bold mb-2 px-2">
+                <span id="opt-graph-title" class="text-fuchsia-400">Objective Function & Instantaneous Tangent</span>
+                <span id="opt-slope-readout" class="font-mono text-amber-400">Tangent Slope: +32.00</span>
+              </div>
+              <div class="h-[210px] w-full">
+                <canvas id="optCurveCanvas" class="w-full h-full rounded-2xl bg-slate-900"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Controls, Step-by-Step Derivation & Verification -->
+          <div class="lg:col-span-4 flex flex-col justify-between space-y-4">
+            <div class="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-5 space-y-4">
+              <div class="flex items-center justify-between">
+                <h3 class="font-bold text-slate-900 text-sm">Control Variable</h3>
+                <button id="opt-seek-btn" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[11px] rounded-lg shadow-sm transition">
+                  🎯 Seek $f'(x) = 0$
+                </button>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1.5">
+                  <label id="opt-slider-label" for="opt-slider">Cutout Corner $x$:</label>
+                  <span id="opt-slider-val" class="font-mono text-indigo-700 font-extrabold">2.00 cm</span>
+                </div>
+                <input id="opt-slider" type="range" min="0.1" max="5.9" step="0.05" value="2.0" class="custom-slider w-full h-2.5 bg-slate-200 rounded-lg cursor-pointer">
+                <div class="flex justify-between text-[11px] text-slate-500 mt-1 font-semibold">
+                  <span id="opt-min-val">0.1</span>
+                  <span id="opt-critical-tag" class="text-emerald-700 font-bold">Optimal ≈ 2.35</span>
+                  <span id="opt-max-val">5.9</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mathematical Live Calculus Breakdown Card -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
+              <h4 class="text-xs uppercase font-extrabold tracking-wider text-slate-500">The 5-Step Optimization Process</h4>
+              
+              <div class="space-y-2 text-xs">
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span class="text-[10px] font-extrabold uppercase text-indigo-600 block">1. Objective Function</span>
+                  <div id="opt-step-formula" class="font-mono font-bold text-slate-800 text-xs mt-0.5 overflow-x-auto">$V(x) = x(12-2x)(18-2x)$</div>
+                </div>
+
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span class="text-[10px] font-extrabold uppercase text-indigo-600 block">2. First Derivative $\frac{df}{dx}$</span>
+                  <div id="opt-step-derivative" class="font-mono font-bold text-slate-800 text-xs mt-0.5 overflow-x-auto">$V'(x) = 12x^2 - 120x + 216$</div>
+                </div>
+
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span class="text-[10px] font-extrabold uppercase text-indigo-600 block">3. Set $f'(x) = 0$ (Critical Points)</span>
+                  <div id="opt-step-critical" class="font-mono font-bold text-slate-800 text-xs mt-0.5 overflow-x-auto">$x \approx 2.35 \text{ cm}$ (in physical domain)</div>
+                </div>
+
+                <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                  <span class="text-[10px] font-extrabold uppercase text-indigo-600 block">4. Second Derivative Test</span>
+                  <div id="opt-step-sdt" class="font-mono font-bold text-slate-800 text-xs mt-0.5 overflow-x-auto">$V''(2.35) = -63.6 < 0 \implies \text{Concave Down (Maximum!)}$</div>
+                </div>
+
+                <div class="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200">
+                  <span class="text-[10px] font-extrabold uppercase text-indigo-700 block">5. Evaluated Value at Current $x$</span>
+                  <div id="opt-step-result" class="font-bold text-indigo-900 text-sm mt-0.5">$V(2.00) = 224.00 \text{ cm}^3$</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Guided Student Exercise Card -->
+        <div class="mt-6 bg-gradient-to-r from-indigo-900 to-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+            <div>
+              <span class="text-xs uppercase font-extrabold tracking-wider text-cyan-400">Interactive Student Discovery Challenge</span>
+              <h3 class="text-lg font-black text-white mt-0.5">Solve Your Own Optimization Problem</h3>
+            </div>
+            <button id="btn-new-opt-challenge" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition">
+              🎲 Randomize Dimensions
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            <div class="lg:col-span-8 space-y-2">
+              <p id="opt-challenge-desc" class="text-sm text-slate-200 leading-relaxed">
+                A cardboard square measures <strong class="text-cyan-300 font-mono">18 cm × 18 cm</strong>. You cut square corners of side length $x$ and fold up the sides to form an open-top box. Calculate the exact cut length $x$ that maximizes the volume.
+              </p>
+              <div class="flex flex-wrap items-center gap-3 pt-2">
+                <span class="text-xs text-slate-300 font-semibold">Your Calculated $x$ (in cm):</span>
+                <input id="opt-challenge-input" type="number" step="0.1" placeholder="e.g. 3.0" class="w-28 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400">
+                <button id="opt-challenge-submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-md transition">
+                  Check Answer
+                </button>
+              </div>
+              <div id="opt-challenge-feedback" class="hidden mt-3 p-3 rounded-xl text-xs font-semibold"></div>
+            </div>
+
+            <div class="lg:col-span-4 bg-slate-950/70 border border-slate-800 p-4 rounded-2xl text-xs space-y-1.5 text-slate-300">
+              <span class="text-[11px] font-extrabold text-amber-400 uppercase block">💡 Optimization Strategy:</span>
+              <p>1. Formula: $V(x) = x(S - 2x)^2 = 4x^3 - 4Sx^2 + S^2x$</p>
+              <p>2. Take derivative: $V'(x) = 12x^2 - 8Sx + S^2$</p>
+              <p>3. Factoring reveals root: $x = \frac{S}{6}$</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== SECTION 5: MASTERY ARENA ==================== -->
+    <section id="section-5" class="tab-section hidden space-y-6">
+      <div class="glass-card rounded-3xl p-6 sm:p-8 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+          <div>
+            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold mb-2">
+              <span>Goal 5 of 5 • Randomized Assessment</span>
+            </div>
+            <h2 class="text-2xl font-black text-slate-900 tracking-tight">Adaptive Derivative Mastery Challenge</h2>
+            <p class="text-slate-600 text-sm mt-1 max-w-2xl">
+              10 problems randomly selected from a 20-question bank across Webb's Depth of Knowledge (DOK Level 1 Recall to DOK Level 4 Extended Reasoning). Answer order and options are randomized for each student!
+            </p>
+          </div>
+          <div class="flex items-center space-x-3 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-2xl">
+            <span class="text-xs font-bold text-slate-600">Current Score:</span>
+            <span id="quiz-score" class="text-xl font-extrabold text-indigo-600">0 / 10</span>
+          </div>
+        </div>
+
+        <div class="max-w-3xl mx-auto mt-6">
+          <div id="quiz-card" class="bg-white border-2 border-indigo-100 rounded-3xl p-6 sm:p-8 shadow-md">
+            <div class="flex flex-wrap justify-between items-center text-xs font-bold text-slate-400 gap-2 mb-4">
+              <span id="quiz-step-count">Question 1 of 10</span>
+              <div class="flex items-center space-x-2">
+                <span id="quiz-dok-badge" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">DOK 1</span>
+                <span id="quiz-category" class="text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-md">Limits & Definition</span>
+              </div>
+            </div>
+
+            <div id="quiz-question-text" class="text-base sm:text-lg font-bold text-slate-800 mb-6">
+              <!-- Injected by JS -->
+            </div>
+
+            <div id="quiz-options-container" class="space-y-3">
+              <!-- Injected by JS -->
+            </div>
+
+            <!-- Quiz feedback message box -->
+            <div id="quiz-feedback" class="mt-6 hidden p-4 rounded-2xl text-xs sm:text-sm font-semibold border transition-all">
+              <!-- Dynamically populated -->
+            </div>
+
+            <div class="mt-6 flex justify-between items-center pt-4 border-t border-slate-100">
+              <button id="quiz-hint-btn" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold underline">
+                💡 Need a hint?
+              </button>
+              <button id="quiz-next-btn" class="hidden px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+                Next Question →
+              </button>
+            </div>
+          </div>
+
+          <!-- Completion Certificate Modal / Banner -->
+          <div id="completion-banner" class="hidden mt-6 bg-gradient-to-r from-emerald-500 to-teal-600 text-white p-8 rounded-3xl shadow-xl text-center">
+            <div class="text-4xl mb-2">🎓 ⭐ 🏆</div>
+            <h3 class="text-2xl font-black tracking-tight">Derivative Mastery Complete!</h3>
+            <p id="completion-summary" class="text-emerald-100 text-sm mt-1 max-w-md mx-auto">
+              You scored 10 / 10 across randomized DOK 1–4 calculus challenges!
+            </p>
+            <div class="mt-5 inline-flex items-center space-x-3 bg-white/20 backdrop-blur-md px-4 py-2 rounded-xl text-xs font-mono">
+              <span id="student-verification-code">Verified: SEC-CALC-PASS</span>
+              <span>• Complete Secondary Derivative Lab</span>
+            </div>
+            <div class="mt-6 flex justify-center space-x-3">
+              <button onclick="restartQuiz()" class="px-5 py-2.5 bg-white text-emerald-800 font-extrabold text-xs rounded-xl shadow-md hover:bg-slate-100 transition">
+                Generate New Randomized 10 Problems
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="bg-white/80 border-t border-slate-200 py-4 mt-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+      <p>© Interactive Calculus Laboratory • Designed for Secondary Education & Conceptual Discovery</p>
+      <div class="flex items-center space-x-4">
+        <span>Differential Calculus</span>
+        <span>•</span>
+        <span>Optimization & Extrema</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Notification Toast Container -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl text-xs font-bold transition-all duration-300 transform translate-y-24 opacity-0 pointer-events-none">
+    Notice Message
+  </div>
+
+  <!-- ==================== SCRIPT LOGIC ==================== -->
+  <script>
+    /* Audio synthesizer using standard Web Audio API */
+    let audioCtx = null;
+    let soundEnabled = true;
+
+    function playTone(freq, type = 'sine', duration = 0.12) {
+      if (!soundEnabled) return;
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {
+        // Fallback
+      }
+    }
+
+    function soundSuccess() {
+      playTone(523.25, 'triangle', 0.1);
+      setTimeout(() => playTone(659.25, 'triangle', 0.15), 100);
+      setTimeout(() => playTone(783.99, 'triangle', 0.25), 200);
+    }
+
+    function soundClick() {
+      playTone(400, 'sine', 0.04);
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      if (!toast) return;
+      toast.innerText = msg;
+      toast.classList.remove('translate-y-24', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.add('translate-y-24', 'opacity-0');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+      }, 3000);
+    }
+
+    /* Sound toggle */
+    const soundToggleBtn = document.getElementById('sound-toggle-btn');
+    if (soundToggleBtn) {
+      soundToggleBtn.addEventListener('click', () => {
+        soundEnabled = !soundEnabled;
+        showToast(soundEnabled ? '🔊 Sound enabled' : '🔇 Sound muted');
+        soundClick();
+      });
+    }
+
+    /* Tab switcher for 5 tabs */
+    function switchTab(tabIndex) {
+      soundClick();
+      for (let i = 1; i <= 5; i++) {
+        const sec = document.getElementById(`section-${i}`);
+        const btn = document.getElementById(`tab-btn-${i}`);
+        if (!sec || !btn) continue;
+        if (i === tabIndex) {
+          sec.classList.remove('hidden');
+          sec.classList.add('block');
+          btn.classList.add('bg-white', 'text-indigo-700', 'shadow-sm');
+          btn.classList.remove('text-slate-600');
+        } else {
+          sec.classList.remove('block');
+          sec.classList.add('hidden');
+          btn.classList.remove('bg-white', 'text-indigo-700', 'shadow-sm');
+          btn.classList.add('text-slate-600');
+        }
+      }
+      updateOverallProgress(tabIndex);
+
+      if (tabIndex === 1) renderSecantCanvas();
+      if (tabIndex === 2) {
+        initRuleDropdown();
+        updateRuleStep();
+      }
+      if (tabIndex === 3) {
+        renderTopCanvas();
+        renderBottomCanvas();
+      }
+      if (tabIndex === 4) {
+        renderOptimizationCanvases();
+        updateOptimizationMath();
+      }
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: "$$", right: "$$", display: true},
+            {left: "$", right: "$", display: false}
+          ]
+        });
+      }
+    }
+
+    function updateOverallProgress(currentTab) {
+      const pct = Math.max(20, currentTab * 20);
+      const bar = document.getElementById('overall-progress-bar');
+      const text = document.getElementById('overall-progress-text');
+      if (bar) bar.style.width = `${pct}%`;
+      if (text) text.innerText = `${pct}%`;
+    }
+
+    function resizeCanvas(canvas) {
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      if (ctx && ctx.resetTransform) ctx.resetTransform();
+      if (ctx) ctx.scale(dpr, dpr);
+    }
+
+    /* ========================================================
+       SECTION 1: SECANT TO TANGENT CANVAS IMPLEMENTATION
+       ======================================================== */
+    const secantCanvas = document.getElementById('secantCanvas');
+    const secCtx = secantCanvas ? secantCanvas.getContext('2d') : null;
+    const sliderX = document.getElementById('slider-x');
+    const sliderH = document.getElementById('slider-h');
+    const sliderXVal = document.getElementById('slider-x-val');
+    const sliderHVal = document.getElementById('slider-h-val');
+    const tangentSlopeDisplay = document.getElementById('tangent-slope-display');
+    const mathDeltaY = document.getElementById('math-delta-y');
+    const mathDeltaX = document.getElementById('math-delta-x');
+    const mathSecantSlope = document.getElementById('math-secant-slope');
+    const limitBanner = document.getElementById('limit-reached-banner');
+    const btnAnimateH = document.getElementById('btn-animate-h');
+
+    function f1(x) { return x * x; }
+    function df1(x) { return 2 * x; }
+
+    function renderSecantCanvas() {
+      if (!secantCanvas || !secCtx) return;
+      resizeCanvas(secantCanvas);
+      const w = secantCanvas.getBoundingClientRect().width;
+      const h = secantCanvas.getBoundingClientRect().height;
+
+      const minX = -1.5, maxX = 4.2;
+      const minY = -1.5, maxY = 12.0;
+
+      function toScreenX(x) {
+        return ((x - minX) / (maxX - minX)) * w;
+      }
+      function toScreenY(y) {
+        return h - ((y - minY) / (maxY - minY)) * h;
+      }
+
+      secCtx.clearRect(0, 0, w, h);
+
+      // Grid
+      secCtx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+      secCtx.lineWidth = 1;
+      for (let gx = Math.ceil(minX); gx <= maxX; gx++) {
+        secCtx.beginPath();
+        secCtx.moveTo(toScreenX(gx), 0);
+        secCtx.lineTo(toScreenX(gx), h);
+        secCtx.stroke();
+      }
+      for (let gy = Math.ceil(minY); gy <= maxY; gy += 2) {
+        secCtx.beginPath();
+        secCtx.moveTo(0, toScreenY(gy));
+        secCtx.lineTo(w, toScreenY(gy));
+        secCtx.stroke();
+      }
+
+      // Axes
+      secCtx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      secCtx.lineWidth = 1.5;
+      secCtx.beginPath();
+      secCtx.moveTo(0, toScreenY(0));
+      secCtx.lineTo(w, toScreenY(0));
+      secCtx.stroke();
+      secCtx.beginPath();
+      secCtx.moveTo(toScreenX(0), 0);
+      secCtx.lineTo(toScreenX(0), h);
+      secCtx.stroke();
+
+      // Plot curve f(x) = x^2
+      secCtx.beginPath();
+      secCtx.strokeStyle = '#60a5fa';
+      secCtx.lineWidth = 3.5;
+      for (let px = 0; px <= w; px += 2) {
+        const xVal = minX + (px / w) * (maxX - minX);
+        const yVal = f1(xVal);
+        const sy = toScreenY(yVal);
+        if (px === 0) secCtx.moveTo(px, sy);
+        else secCtx.lineTo(px, sy);
+      }
+      secCtx.stroke();
+
+      const x0 = sliderX ? parseFloat(sliderX.value) : 1.0;
+      const hVal = sliderH ? parseFloat(sliderH.value) : 1.5;
+      const x1 = x0 + hVal;
+      const y0 = f1(x0);
+      const y1 = f1(x1);
+
+      // Tangent line at P
+      const mTan = df1(x0);
+      secCtx.beginPath();
+      secCtx.strokeStyle = 'rgba(52, 211, 153, 0.85)';
+      secCtx.lineWidth = 2;
+      secCtx.setLineDash([5, 5]);
+      const tanXStart = x0 - 2.5;
+      const tanXEnd = x0 + 2.5;
+      secCtx.moveTo(toScreenX(tanXStart), toScreenY(y0 + mTan * (tanXStart - x0)));
+      secCtx.lineTo(toScreenX(tanXEnd), toScreenY(y0 + mTan * (tanXEnd - x0)));
+      secCtx.stroke();
+      secCtx.setLineDash([]);
+
+      // Delta triangle
+      secCtx.fillStyle = 'rgba(245, 158, 11, 0.12)';
+      secCtx.beginPath();
+      secCtx.moveTo(toScreenX(x0), toScreenY(y0));
+      secCtx.lineTo(toScreenX(x1), toScreenY(y0));
+      secCtx.lineTo(toScreenX(x1), toScreenY(y1));
+      secCtx.closePath();
+      secCtx.fill();
+
+      // Delta x base line
+      secCtx.strokeStyle = '#fbbf24';
+      secCtx.lineWidth = 2;
+      secCtx.beginPath();
+      secCtx.moveTo(toScreenX(x0), toScreenY(y0));
+      secCtx.lineTo(toScreenX(x1), toScreenY(y0));
+      secCtx.stroke();
+
+      // Delta y vertical line
+      secCtx.strokeStyle = '#f59e0b';
+      secCtx.lineWidth = 2;
+      secCtx.beginPath();
+      secCtx.moveTo(toScreenX(x1), toScreenY(y0));
+      secCtx.lineTo(toScreenX(x1), toScreenY(y1));
+      secCtx.stroke();
+
+      // Secant line
+      const mSec = (y1 - y0) / hVal;
+      secCtx.beginPath();
+      secCtx.strokeStyle = '#f59e0b';
+      secCtx.lineWidth = 2.5;
+      const secXStart = x0 - 1.5;
+      const secXEnd = x1 + 1.5;
+      secCtx.moveTo(toScreenX(secXStart), toScreenY(y0 + mSec * (secXStart - x0)));
+      secCtx.lineTo(toScreenX(secXEnd), toScreenY(y0 + mSec * (secXEnd - x0)));
+      secCtx.stroke();
+
+      // Point P
+      secCtx.fillStyle = '#10b981';
+      secCtx.beginPath();
+      secCtx.arc(toScreenX(x0), toScreenY(y0), 6.5, 0, Math.PI * 2);
+      secCtx.fill();
+      secCtx.strokeStyle = '#ffffff';
+      secCtx.lineWidth = 2;
+      secCtx.stroke();
+
+      // Point Q
+      secCtx.fillStyle = '#fbbf24';
+      secCtx.beginPath();
+      secCtx.arc(toScreenX(x1), toScreenY(y1), 6.5, 0, Math.PI * 2);
+      secCtx.fill();
+      secCtx.strokeStyle = '#ffffff';
+      secCtx.lineWidth = 2;
+      secCtx.stroke();
+
+      // Labels
+      secCtx.font = 'bold 12px "Plus Jakarta Sans", sans-serif';
+      secCtx.fillStyle = '#34d399';
+      secCtx.fillText(`P (${x0.toFixed(1)}, ${y0.toFixed(1)})`, toScreenX(x0) - 45, toScreenY(y0) - 12);
+      secCtx.fillStyle = '#fde68a';
+      secCtx.fillText(`Q (${x1.toFixed(1)}, ${y1.toFixed(1)})`, toScreenX(x1) + 10, toScreenY(y1) + 14);
+
+      // DOM updates
+      if (sliderXVal) sliderXVal.innerText = x0.toFixed(1);
+      if (sliderHVal) sliderHVal.innerText = hVal.toFixed(2);
+      if (tangentSlopeDisplay) tangentSlopeDisplay.innerText = mTan.toFixed(2);
+      if (mathDeltaX) mathDeltaX.innerText = hVal.toFixed(2);
+      if (mathDeltaY) mathDeltaY.innerText = (y1 - y0).toFixed(2);
+      if (mathSecantSlope) mathSecantSlope.innerText = mSec.toFixed(2);
+
+      if (limitBanner) {
+        if (hVal <= 0.05) {
+          limitBanner.classList.remove('hidden');
+        } else {
+          limitBanner.classList.add('hidden');
+        }
+      }
+    }
+
+    if (sliderX) sliderX.addEventListener('input', () => renderSecantCanvas());
+    if (sliderH) sliderH.addEventListener('input', () => renderSecantCanvas());
+
+    let animationId = null;
+    if (btnAnimateH) {
+      btnAnimateH.addEventListener('click', () => {
+        soundClick();
+        if (animationId) cancelAnimationFrame(animationId);
+        if (!sliderH) return;
+        const startH = parseFloat(sliderH.value);
+        const targetH = 0.02;
+        const duration = 1600;
+        const startTime = performance.now();
+
+        function stepAnim(now) {
+          const elapsed = now - startTime;
+          const progress = Math.min(1, elapsed / duration);
+          const ease = 1 - Math.pow(1 - progress, 3);
+          const currentH = startH + (targetH - startH) * ease;
+          sliderH.value = currentH.toFixed(2);
+          renderSecantCanvas();
+
+          if (progress < 1) {
+            animationId = requestAnimationFrame(stepAnim);
+          } else {
+            soundSuccess();
+            showToast("🎯 You've reached the tangent slope limit: h → 0!");
+          }
+        }
+        animationId = requestAnimationFrame(stepAnim);
+      });
+    }
+
+    /* ========================================================
+       SECTION 2: STEP-BY-STEP RULES SCRUBBER
+       ======================================================== */
+    const ruleCurriculum = {
+      power: {
+        title: "Differentiating a Polynomial with the Power Rule",
+        steps: [
+          {
+            title: "Step 1: Inspect the Function & Identify Terms",
+            math: "f(x) = 3x^4 - 5x^2 + 7",
+            desc: "We have three distinct polynomial terms separated by addition and subtraction. We can differentiate term-by-term using the <strong>Sum & Difference Rule</strong>: $\\frac{d}{dx}[u \\pm v] = \\frac{du}{dx} \\pm \\frac{dv}{dx}$.",
+            tip: "Recall the Power Rule fundamental definition: $\\frac{d}{dx}\\left[x^n\\right] = n \\cdot x^{n-1}$."
+          },
+          {
+            title: "Step 2: Bring the Exponents to the Front & Subtract 1",
+            math: "f'(x) = 3\\cdot\\left(4x^{4-1}\\right) - 5\\cdot\\left(2x^{2-1}\\right) + \\frac{d}{dx}[7]",
+            desc: "For each power $x^n$, multiply the coefficient by the exponent $n$, then decrease the exponent by $1$. The constant $7$ has a derivative of zero because constants do not change ($\\\\text{slope}=0$).",
+            tip: "Constant Rule: Any flat constant horizontal line has a rate of change of 0!"
+          },
+          {
+            title: "Step 3: Multiply the Coefficients",
+            math: "f'(x) = (3 \\times 4)x^3 - (5 \\times 2)x^1 + 0",
+            desc: "Carry out the arithmetic for each term: $3 \\times 4 = 12$ and $5 \\times 2 = 10$. Remember that $x^1$ is simply $x$.",
+            tip: "Be vigilant with negative signs in front of coefficient multipliers."
+          },
+          {
+            title: "Step 4: Final Derivative in Clean Form",
+            math: "f'(x) = 12x^3 - 10x",
+            desc: "All terms have been combined and simplified. This resulting equation gives the exact instantaneous slope at any point $x$ along the original curve!",
+            tip: "To evaluate at $x=1$, substitute $1$: $f'(1) = 12(1)^3 - 10(1) = 2$."
+          }
+        ]
+      },
+      product: {
+        title: "Product Rule: Combining $x^3$ and $\\sin(x)$",
+        steps: [
+          {
+            title: "Step 1: Recognize Product Structure",
+            math: "f(x) = u(x) \\cdot v(x) \\quad\\text{where } u(x)=x^3, \\; v(x)=\\sin(x)",
+            desc: "When two non-constant functions are multiplied, you cannot simply multiply their individual derivatives! You must apply the <strong>Product Rule</strong>.",
+            tip: "The Product Rule formula: $\\frac{d}{dx}[u \\cdot v] = u'v + uv'$ ('First times derivative of second plus second times derivative of first')."
+          },
+          {
+            title: "Step 2: Differentiate Components Separately",
+            math: "u'(x) = 3x^2, \\quad v'(x) = \\cos(x)",
+            desc: "Find the component derivatives: Power Rule gives $u' = 3x^2$; standard trig derivative gives $v' = \\cos(x)$.",
+            tip: "Keeping a side 'parts inventory' makes combining formulas effortless!"
+          },
+          {
+            title: "Step 3: Assemble into the Product Formula",
+            math: "f'(x) = (3x^2)(\\sin x) + (x^3)(\\cos x)",
+            desc: "Substitute each part directly: $u'v + uv'$. Both terms represent the coupled rate at which the area under the product expands.",
+            tip: "Notice that both $3x^2\\sin(x)$ and $x^3\\cos(x)$ share a common factor of $x^2$."
+          },
+          {
+            title: "Step 4: Factor to Simplest Factored Form",
+            math: "f'(x) = x^2\\bigl(3\\sin(x) + x\\cos(x)\\bigr)",
+            desc: "Factoring out $x^2$ produces a clean expression ready for finding critical points where $f'(x) = 0$.",
+            tip: "Factored derivatives make solving for critical values ($f'(x)=0$) much easier!"
+          }
+        ]
+      },
+      quotient: {
+        title: "Quotient Rule: Fraction $\\frac{2x+3}{x^2+1}$",
+        steps: [
+          {
+            title: "Step 1: Identify High & Low Functions",
+            math: "f(x) = \\frac{\\text{High}}{\\text{Low}} = \\frac{u}{v} = \\frac{2x+3}{x^2+1}",
+            desc: "Whenever a function has a variable in the denominator that cannot be divided out simply, use the Quotient Rule.",
+            tip: "Mnemonic: 'Low d-High minus High d-Low, over the square of what's below!'"
+          },
+          {
+            title: "Step 2: Differentiate Numerator and Denominator",
+            math: "u' = 2, \\quad v' = 2x",
+            desc: "High derivative: $\\frac{d}{dx}[2x+3] = 2$. Low derivative: $\\frac{d}{dx}[x^2+1] = 2x$.",
+            tip: "Watch your brackets carefully when applying the minus sign in step 3!"
+          },
+          {
+            title: "Step 3: Assemble into Quotient Formula",
+            math: "f'(x) = \\frac{(x^2+1)(2) - (2x+3)(2x)}{(x^2+1)^2}",
+            desc: "Substitute into $\\frac{v u' - u v'}{v^2}$. Be careful: distributing the minus sign applies to both terms of the product $(2x+3)(2x)$.",
+            tip: "Never expand the denominator $(x^2+1)^2$ unless terms cancel."
+          },
+          {
+            title: "Step 4: Expand Numerator and Simplify",
+            math: "f'(x) = \\frac{2x^2 + 2 - (4x^2 + 6x)}{(x^2+1)^2} = \\frac{-2x^2 - 6x + 2}{(x^2+1)^2}",
+            desc: "Combining like terms in the numerator: $2x^2 - 4x^2 = -2x^2$, and $-6x$, $+2$. The result is fully simplified!",
+            tip: "You can factor out $-2$ from numerator: $\\frac{-2(x^2 + 3x - 1)}{(x^2+1)^2}$."
+          }
+        ]
+      },
+      chain: {
+        title: "Chain Rule: Composite Function $(4x^2 + 1)^5$",
+        steps: [
+          {
+            title: "Step 1: Identify Outer vs. Inner Functions",
+            math: "f(x) = [g(x)]^5 \\quad\\text{where } g(x) = 4x^2 + 1",
+            desc: "This is a nested composite function $f(g(x))$. Outer function is $(\\dots)^5$, inner core is $4x^2 + 1$. We must apply the <strong>Chain Rule</strong>: $\\frac{df}{dx} = f'(g(x)) \\cdot g'(x)$.",
+            tip: "Chain Rule motto: Differentiate the outside (leave inside untouched), then multiply by the derivative of the inside!"
+          },
+          {
+            title: "Step 2: Differentiate the Outer Shell",
+            math: "\\text{Outer Derivative: } 5(4x^2 + 1)^4 \\cdot \\frac{d}{dx}[4x^2 + 1]",
+            desc: "Bring the 5 to the front and drop power to 4 while leaving the inside expression $(4x^2 + 1)$ completely unchanged.",
+            tip: "A common student mistake is trying to differentiate the inside during the first step. Leave it alone first!"
+          },
+          {
+            title: "Step 3: Multiply by Inner Derivative",
+            math: "f'(x) = 5(4x^2 + 1)^4 \\cdot (8x)",
+            desc: "Compute the derivative of inside: $\\frac{d}{dx}[4x^2 + 1] = 8x + 0 = 8x$. Multiply the outer result by this inner factor.",
+            tip: "Always remember: constants like $+1$ differentiate to zero!"
+          },
+          {
+            title: "Step 4: Multiply External Constants",
+            math: "f'(x) = 40x\\,(4x^2 + 1)^4",
+            desc: "Multiply the scalar $5$ by $8x$ to get $40x$. This completes the differentiation!",
+            tip: "Do not expand $(4x^2+1)^4$; leaving it factored is preferred and standard practice."
+          }
+        ]
+      },
+      exponential: {
+        title: "Exponential Rule: Differentiating $e^{2x} + 2^x$",
+        steps: [
+          {
+            title: "Step 1: Identify Exponential Bases ($e$ vs. General Base $a$)",
+            math: "f(x) = e^{2x} + 2^x",
+            desc: "Here we have the natural exponential base $e$ combined with general constant base $2$. Differentiate each term using its designated exponential differentiation law.",
+            tip: "Standard rules: $\\frac{d}{dx}[e^u] = e^u \\cdot u'$ and $\\frac{d}{dx}[a^x] = a^x \\ln(a)$."
+          },
+          {
+            title: "Step 2: Differentiate First Term $e^{2x}$ with Chain Rule",
+            math: "\\frac{d}{dx}\\left[e^{2x}\\right] = e^{2x} \\cdot \\frac{d}{dx}[2x] = 2e^{2x}",
+            desc: "Natural exponential derivative is itself times the derivative of the exponent. Since exponent is $2x$, its inner derivative is $2$.",
+            tip: "The natural base $e$ is unique because $\\ln(e) = 1$!"
+          },
+          {
+            title: "Step 3: Differentiate Second Term $2^x$ (Base $a$)",
+            math: "\\frac{d}{dx}\\left[2^x\\right] = 2^x \\ln(2)",
+            desc: "For general exponential base $a>0$, rate of change includes a natural log scaling factor $\\ln(a)$.",
+            tip: "Never confuse $2^x$ (exponential) with $x^2$ (power rule). Power rule only applies to variable bases!"
+          },
+          {
+            title: "Step 4: Combine into Complete Derivative",
+            math: "f'(x) = 2e^{2x} + 2^x \\ln(2)",
+            desc: "Combine the separated differentiated terms. The instantaneous slope is now fully evaluated.",
+            tip: "At $x=0$, $f'(0) = 2e^0 + 2^0\\ln(2) = 2 + \\ln(2) \\approx 2.693$."
+          }
+        ]
+      },
+      trig: {
+        title: "Trigonometric & Chain Rule: $\\sin(3x) + \\tan(x)$",
+        steps: [
+          {
+            title: "Step 1: Identify Trig Expressions and Inner Angles",
+            math: "f(x) = \\sin(3x) + \\tan(x)",
+            desc: "First term $\\sin(3x)$ is a composite function requiring chain rule because the argument is $3x$. The second term is standard tangent.",
+            tip: "Key trig derivatives: $\\frac{d}{dx}[\\sin u] = \\cos u \\cdot u'$, and $\\frac{d}{dx}[\\tan x] = \\sec^2(x)$."
+          },
+          {
+            title: "Step 2: Differentiate Sine with Inner Argument",
+            math: "\\frac{d}{dx}\\left[\\sin(3x)\\right] = \\cos(3x) \\cdot \\frac{d}{dx}[3x] = 3\\cos(3x)",
+            desc: "Outer derivative of sine is cosine. Multiplying by the argument rate of change $3$ gives $3\\cos(3x)$.",
+            tip: "Common pitfall: Don't forget to multiply by 3 outside the cosine!"
+          },
+          {
+            title: "Step 3: Differentiate Tangent",
+            math: "\\frac{d}{dx}\\left[\\tan(x)\\right] = \\sec^2(x)",
+            desc: "The instantaneous slope of $\\tan(x)$ is $\\sec^2(x) = \\frac{1}{\\cos^2(x)}$. Since its angle is simply $x$, derivative of inside is $1$.",
+            tip: "Recall that $\\tan(x) = \\frac{\\sin x}{\\cos x}$, which can also be proven via Quotient Rule!"
+          },
+          {
+            title: "Step 4: Formulate Final Result",
+            math: "f'(x) = 3\\cos(3x) + \\sec^2(x)",
+            desc: "Combine terms to yield the finished derivative function for all angles within the domain.",
+            tip: "At $x=0$, $f'(0) = 3\\cos(0) + \\sec^2(0) = 3(1) + 1 = 4$."
+          }
+        ]
+      }
+    };
+
+    let currentRule = 'power';
+    let currentStep = 1;
+    let autoPlayInterval = null;
+
+    const rulesMetadata = [
+      { id: 'power', badge: 'Rule 1', name: 'Power Rule', math: '3x^4 - 5x^2 + 7' },
+      { id: 'product', badge: 'Rule 2', name: 'Product Rule', math: 'x^3 \\cdot \\sin(x)' },
+      { id: 'quotient', badge: 'Rule 3', name: 'Quotient Rule', math: '\\frac{2x+3}{x^2+1}' },
+      { id: 'chain', badge: 'Rule 4', name: 'Chain Rule', math: '(4x^2 + 1)^5' },
+      { id: 'exponential', badge: 'Rule 5', name: 'Exponential Rule', math: 'e^{2x} + 2^x' },
+      { id: 'trig', badge: 'Rule 6', name: 'Trig & Chain', math: '\\sin(3x) + \\tan(x)' }
+    ];
+
+    const ruleDropdownBtn = document.getElementById('rule-dropdown-btn');
+    const ruleDropdownMenu = document.getElementById('rule-dropdown-menu');
+    const ruleDropdownArrow = document.getElementById('rule-dropdown-arrow');
+    const ruleDropdownSelected = document.getElementById('rule-dropdown-selected');
+    const ruleDropdownContainer = document.getElementById('rule-dropdown-container');
+
+    const stepSlider = document.getElementById('step-slider');
+    const stepTitle = document.getElementById('step-title');
+    const stepMath = document.getElementById('step-math-container');
+    const stepExpl = document.getElementById('step-explanation');
+    const stepTip = document.getElementById('step-tip-text');
+    const stepPrevBtn = document.getElementById('step-prev-btn');
+    const stepNextBtn = document.getElementById('step-next-btn');
+    const stepAutoPlayBtn = document.getElementById('step-autoplay-btn');
+    const stepIndicator = document.getElementById('step-indicator-text');
+    const ruleCanvas = document.getElementById('ruleCanvas');
+    const ruleCtx = ruleCanvas ? ruleCanvas.getContext('2d') : null;
+    const ruleCanvasStat = document.getElementById('rule-canvas-stat');
+    const ruleCanvasLabel = document.getElementById('rule-canvas-label');
+
+    function initRuleDropdown() {
+      if (!ruleDropdownMenu) return;
+      ruleDropdownMenu.innerHTML = '';
+
+      rulesMetadata.forEach(rule => {
+        const itemBtn = document.createElement('button');
+        itemBtn.type = 'button';
+        const isSelected = rule.id === currentRule;
+        itemBtn.className = `w-full text-left p-2.5 rounded-xl transition flex items-center justify-between mb-1 ${
+          isSelected ? 'bg-indigo-50 border border-indigo-200' : 'hover:bg-slate-50'
+        }`;
+
+        itemBtn.innerHTML = `
+          <div class="flex flex-col">
+            <div class="flex items-center space-x-2">
+              <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-700'}">${rule.badge}</span>
+              <span class="text-xs font-bold text-slate-800">${rule.name}</span>
+            </div>
+            <div class="text-xs text-indigo-700 font-mono mt-1 rule-math-preview">$${rule.math}$</div>
+          </div>
+          ${isSelected ? '<span class="text-indigo-600 font-bold text-sm">✓</span>' : ''}
+        `;
+
+        itemBtn.addEventListener('click', () => {
+          currentRule = rule.id;
+          currentStep = 1;
+          soundClick();
+          closeRuleDropdown();
+          updateRuleDropdownButton();
+          initRuleDropdown();
+          updateRuleStep();
+        });
+
+        ruleDropdownMenu.appendChild(itemBtn);
+      });
+
+      updateRuleDropdownButton();
+
+      if (window.renderMathInElement) {
+        renderMathInElement(ruleDropdownMenu, {
+          delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}]
+        });
+      }
+    }
+
+    function updateRuleDropdownButton() {
+      const activeMeta = rulesMetadata.find(r => r.id === currentRule) || rulesMetadata[0];
+      if (ruleDropdownSelected) {
+        ruleDropdownSelected.innerHTML = `
+          <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 mr-1">${activeMeta.badge}</span>
+          <span class="text-xs font-bold text-slate-900 mr-1.5">${activeMeta.name}:</span>
+          <span class="text-xs text-indigo-600 font-semibold">$${activeMeta.math}$</span>
+        `;
+        if (window.renderMathInElement) {
+          renderMathInElement(ruleDropdownSelected, {
+            delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}]
+          });
+        }
+      }
+    }
+
+    function toggleRuleDropdown() {
+      if (!ruleDropdownMenu) return;
+      const isHidden = ruleDropdownMenu.classList.contains('hidden');
+      if (isHidden) {
+        openRuleDropdown();
+      } else {
+        closeRuleDropdown();
+      }
+    }
+
+    function openRuleDropdown() {
+      if (!ruleDropdownMenu) return;
+      ruleDropdownMenu.classList.remove('hidden');
+      if (ruleDropdownArrow) ruleDropdownArrow.classList.add('rotate-180');
+      if (ruleDropdownBtn) ruleDropdownBtn.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeRuleDropdown() {
+      if (!ruleDropdownMenu) return;
+      ruleDropdownMenu.classList.add('hidden');
+      if (ruleDropdownArrow) ruleDropdownArrow.classList.remove('rotate-180');
+      if (ruleDropdownBtn) ruleDropdownBtn.setAttribute('aria-expanded', 'false');
+    }
+
+    if (ruleDropdownBtn) {
+      ruleDropdownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        soundClick();
+        toggleRuleDropdown();
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (ruleDropdownContainer && !ruleDropdownContainer.contains(e.target)) {
+        closeRuleDropdown();
+      }
+    });
+
+    function renderRuleCanvas() {
+      if (!ruleCanvas || !ruleCtx) return;
+      resizeCanvas(ruleCanvas);
+      const w = ruleCanvas.getBoundingClientRect().width;
+      const h = ruleCanvas.getBoundingClientRect().height;
+      ruleCtx.clearRect(0, 0, w, h);
+
+      // Axes
+      ruleCtx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ruleCtx.lineWidth = 1;
+      ruleCtx.beginPath();
+      ruleCtx.moveTo(0, h / 2);
+      ruleCtx.lineTo(w, h / 2);
+      ruleCtx.moveTo(w / 2, 0);
+      ruleCtx.lineTo(w / 2, h);
+      ruleCtx.stroke();
+
+      let fCurve, dfCurve, xMin = -2.5, xMax = 2.5, yMin = -4, yMax = 4;
+
+      if (currentRule === 'power') {
+        fCurve = x => 0.5 * Math.pow(x, 3) - 1.5 * x;
+        dfCurve = x => 1.5 * Math.pow(x, 2) - 1.5;
+      } else if (currentRule === 'product') {
+        fCurve = x => x * Math.sin(2 * x);
+        dfCurve = x => Math.sin(2 * x) + 2 * x * Math.cos(2 * x);
+      } else if (currentRule === 'quotient') {
+        fCurve = x => (2 * x) / (x * x + 1);
+        dfCurve = x => (2 * (1 - x * x)) / Math.pow(x * x + 1, 2);
+      } else if (currentRule === 'chain') {
+        fCurve = x => 0.5 * Math.pow(x * x - 1, 2) - 1;
+        dfCurve = x => 2 * x * (x * x - 1);
+      } else if (currentRule === 'exponential') {
+        fCurve = x => Math.exp(0.8 * x) - 1.5;
+        dfCurve = x => 0.8 * Math.exp(0.8 * x);
+      } else {
+        fCurve = x => Math.sin(2 * x);
+        dfCurve = x => 2 * Math.cos(2 * x);
+      }
+
+      function toC(x, y) {
+        return {
+          x: ((x - xMin) / (xMax - xMin)) * w,
+          y: h - ((y - yMin) / (yMax - yMin)) * h
+        };
+      }
+
+      // Draw f(x) curve
+      ruleCtx.beginPath();
+      ruleCtx.strokeStyle = '#38bdf8';
+      ruleCtx.lineWidth = 2.5;
+      for (let px = 0; px <= w; px += 2) {
+        const x = xMin + (px / w) * (xMax - xMin);
+        const y = fCurve(x);
+        const pt = toC(x, y);
+        if (px === 0) ruleCtx.moveTo(pt.x, pt.y);
+        else ruleCtx.lineTo(pt.x, pt.y);
+      }
+      ruleCtx.stroke();
+
+      // Show derivative curve progressive reveal
+      if (currentStep >= 2) {
+        ruleCtx.beginPath();
+        ruleCtx.strokeStyle = '#f43f5e';
+        ruleCtx.lineWidth = 2.5;
+        const maxPx = Math.floor(w * (currentStep === 4 ? 1 : (currentStep === 3 ? 0.75 : 0.4)));
+        for (let px = 0; px <= maxPx; px += 2) {
+          const x = xMin + (px / w) * (xMax - xMin);
+          const y = dfCurve(x);
+          const pt = toC(x, y);
+          if (px === 0) ruleCtx.moveTo(pt.x, pt.y);
+          else ruleCtx.lineTo(pt.x, pt.y);
+        }
+        ruleCtx.stroke();
+      }
+
+      if (ruleCanvasStat) ruleCanvasStat.innerText = `Step ${currentStep} of 4`;
+      if (ruleCanvasLabel) ruleCanvasLabel.innerHTML = `<span class="text-sky-400">f(x)</span> vs <span class="text-rose-400">f'(x)</span>`;
+    }
+
+    function updateRuleStep() {
+      const data = ruleCurriculum[currentRule].steps[currentStep - 1];
+      if (stepTitle) stepTitle.innerText = data.title;
+      if (stepMath) stepMath.innerHTML = `$$${data.math}$$`;
+      if (stepExpl) stepExpl.innerHTML = data.desc;
+      if (stepTip) stepTip.innerHTML = `<strong>Rule Insight:</strong> ${data.tip}`;
+      if (stepIndicator) stepIndicator.innerText = `Step ${currentStep} / 4`;
+      if (stepSlider) stepSlider.value = currentStep;
+
+      if (stepPrevBtn) {
+        stepPrevBtn.disabled = currentStep === 1;
+        stepPrevBtn.classList.toggle('opacity-50', currentStep === 1);
+      }
+      if (stepNextBtn) {
+        stepNextBtn.disabled = currentStep === 4;
+        stepNextBtn.classList.toggle('opacity-50', currentStep === 4);
+      }
+
+      renderRuleCanvas();
+
+      if (window.renderMathInElement) {
+        if (stepMath) renderMathInElement(stepMath, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}] });
+        if (stepExpl) renderMathInElement(stepExpl, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}] });
+        if (stepTip) renderMathInElement(stepTip, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}] });
+      }
+    }
+
+    if (stepAutoPlayBtn) {
+      stepAutoPlayBtn.addEventListener('click', () => {
+        soundClick();
+        if (autoPlayInterval) {
+          clearInterval(autoPlayInterval);
+          autoPlayInterval = null;
+          stepAutoPlayBtn.innerHTML = '<span>▶ Auto Play</span>';
+          return;
+        }
+        stepAutoPlayBtn.innerHTML = '<span>⏸ Pause</span>';
+        currentStep = 1;
+        updateRuleStep();
+
+        autoPlayInterval = setInterval(() => {
+          if (currentStep < 4) {
+            currentStep++;
+            updateRuleStep();
+          } else {
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = null;
+            stepAutoPlayBtn.innerHTML = '<span>▶ Auto Play</span>';
+            soundSuccess();
+            showToast("Rule animation complete!");
+          }
+        }, 1500);
+      });
+    }
+
+    function setStep(stepNum) {
+      soundClick();
+      currentStep = stepNum;
+      updateRuleStep();
+    }
+
+    if (stepSlider) {
+      stepSlider.addEventListener('input', (e) => {
+        currentStep = parseInt(e.target.value);
+        soundClick();
+        updateRuleStep();
+      });
+    }
+
+    if (stepPrevBtn) {
+      stepPrevBtn.addEventListener('click', () => {
+        if (currentStep > 1) {
+          currentStep--;
+          soundClick();
+          updateRuleStep();
+        }
+      });
+    }
+
+    if (stepNextBtn) {
+      stepNextBtn.addEventListener('click', () => {
+        if (currentStep < 4) {
+          currentStep++;
+          soundClick();
+          updateRuleStep();
+        }
+      });
+    }
+
+    /* ========================================================
+       SECTION 3: SLOPE TRACER & DERIVATIVE PLOTTER
+       ======================================================== */
+    const canvasTop = document.getElementById('canvasTop');
+    const topCtx = canvasTop ? canvasTop.getContext('2d') : null;
+    const canvasBottom = document.getElementById('canvasBottom');
+    const btmCtx = canvasBottom ? canvasBottom.getContext('2d') : null;
+
+    const sliderTraceX = document.getElementById('slider-trace-x');
+    const sliderTraceXVal = document.getElementById('slider-trace-x-val');
+    const slopeTracerReadout = document.getElementById('slope-tracer-readout');
+    const btnTracePlay = document.getElementById('btn-trace-play');
+    const traceResetBtn = document.getElementById('trace-reset-btn');
+
+    function traceF(x) {
+      return (1 / 3) * Math.pow(x, 3) - x;
+    }
+    function traceDf(x) {
+      return Math.pow(x, 2) - 1;
+    }
+
+    const traceDomain = { minX: -2.8, maxX: 2.8, minY: -3.0, maxY: 3.0 };
+
+    function renderTopCanvas() {
+      if (!canvasTop || !topCtx) return;
+      resizeCanvas(canvasTop);
+      const w = canvasTop.getBoundingClientRect().width;
+      const h = canvasTop.getBoundingClientRect().height;
+
+      function toX(x) {
+        return ((x - traceDomain.minX) / (traceDomain.maxX - traceDomain.minX)) * w;
+      }
+      function toY(y) {
+        return h - ((y - traceDomain.minY) / (traceDomain.maxY - traceDomain.minY)) * h;
+      }
+
+      topCtx.clearRect(0, 0, w, h);
+
+      // Grid
+      topCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      topCtx.lineWidth = 1;
+      for (let gx = Math.ceil(traceDomain.minX); gx <= traceDomain.maxX; gx++) {
+        topCtx.beginPath();
+        topCtx.moveTo(toX(gx), 0);
+        topCtx.lineTo(toX(gx), h);
+        topCtx.stroke();
+      }
+      for (let gy = Math.ceil(traceDomain.minY); gy <= traceDomain.maxY; gy++) {
+        topCtx.beginPath();
+        topCtx.moveTo(0, toY(gy));
+        topCtx.lineTo(w, toY(gy));
+        topCtx.stroke();
+      }
+
+      // Axes
+      topCtx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      topCtx.lineWidth = 1.5;
+      topCtx.beginPath();
+      topCtx.moveTo(0, toY(0));
+      topCtx.lineTo(w, toY(0));
+      topCtx.moveTo(toX(0), 0);
+      topCtx.lineTo(toX(0), h);
+      topCtx.stroke();
+
+      // Original curve: f(x)
+      topCtx.beginPath();
+      topCtx.strokeStyle = '#22d3ee';
+      topCtx.lineWidth = 3;
+      for (let px = 0; px <= w; px += 2) {
+        const xVal = traceDomain.minX + (px / w) * (traceDomain.maxX - traceDomain.minX);
+        const yVal = traceF(xVal);
+        const sy = toY(yVal);
+        if (px === 0) topCtx.moveTo(px, sy);
+        else topCtx.lineTo(px, sy);
+      }
+      topCtx.stroke();
+
+      const curX = parseFloat(sliderTraceX ? sliderTraceX.value : -2.0);
+      const curY = traceF(curX);
+      const slope = traceDf(curX);
+
+      // Tangent line on f(x)
+      topCtx.beginPath();
+      topCtx.strokeStyle = '#f59e0b';
+      topCtx.lineWidth = 2.5;
+      const dxSpan = 1.0;
+      const xA = curX - dxSpan;
+      const xB = curX + dxSpan;
+      topCtx.moveTo(toX(xA), toY(curY + slope * (xA - curX)));
+      topCtx.lineTo(toX(xB), toY(curY + slope * (xB - curX)));
+      topCtx.stroke();
+
+      // Tracer point on f(x)
+      topCtx.fillStyle = '#f59e0b';
+      topCtx.beginPath();
+      topCtx.arc(toX(curX), toY(curY), 6.5, 0, Math.PI * 2);
+      topCtx.fill();
+      topCtx.strokeStyle = '#ffffff';
+      topCtx.lineWidth = 2;
+      topCtx.stroke();
+    }
+
+    function renderBottomCanvas() {
+      if (!canvasBottom || !btmCtx) return;
+      resizeCanvas(canvasBottom);
+      const w = canvasBottom.getBoundingClientRect().width;
+      const h = canvasBottom.getBoundingClientRect().height;
+
+      function toX(x) {
+        return ((x - traceDomain.minX) / (traceDomain.maxX - traceDomain.minX)) * w;
+      }
+      function toY(y) {
+        return h - ((y - traceDomain.minY) / (traceDomain.maxY - traceDomain.minY)) * h;
+      }
+
+      btmCtx.clearRect(0, 0, w, h);
+
+      // Grid
+      btmCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      btmCtx.lineWidth = 1;
+      for (let gx = Math.ceil(traceDomain.minX); gx <= traceDomain.maxX; gx++) {
+        btmCtx.beginPath();
+        btmCtx.moveTo(toX(gx), 0);
+        btmCtx.lineTo(toX(gx), h);
+        btmCtx.stroke();
+      }
+      for (let gy = Math.ceil(traceDomain.minY); gy <= traceDomain.maxY; gy++) {
+        btmCtx.beginPath();
+        btmCtx.moveTo(0, toY(gy));
+        btmCtx.lineTo(w, toY(gy));
+        btmCtx.stroke();
+      }
+
+      // Axes
+      btmCtx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      btmCtx.lineWidth = 1.5;
+      btmCtx.beginPath();
+      btmCtx.moveTo(0, toY(0));
+      btmCtx.lineTo(w, toY(0));
+      btmCtx.moveTo(toX(0), 0);
+      btmCtx.lineTo(toX(0), h);
+      btmCtx.stroke();
+
+      const curX = parseFloat(sliderTraceX ? sliderTraceX.value : -2.0);
+      const slope = traceDf(curX);
+
+      // Background phantom derivative curve
+      btmCtx.beginPath();
+      btmCtx.strokeStyle = 'rgba(232, 121, 249, 0.25)';
+      btmCtx.lineWidth = 2;
+      btmCtx.setLineDash([4, 4]);
+      for (let px = 0; px <= w; px += 2) {
+        const xVal = traceDomain.minX + (px / w) * (traceDomain.maxX - traceDomain.minX);
+        const yVal = traceDf(xVal);
+        const sy = toY(yVal);
+        if (px === 0) btmCtx.moveTo(px, sy);
+        else btmCtx.lineTo(px, sy);
+      }
+      btmCtx.stroke();
+      btmCtx.setLineDash([]);
+
+      // Drawn derivative curve up to current x position
+      btmCtx.beginPath();
+      btmCtx.strokeStyle = '#e879f9';
+      btmCtx.lineWidth = 3.5;
+      let started = false;
+      for (let px = 0; px <= w; px += 2) {
+        const xVal = traceDomain.minX + (px / w) * (traceDomain.maxX - traceDomain.minX);
+        if (xVal > curX) break;
+        const yVal = traceDf(xVal);
+        const sy = toY(yVal);
+        if (!started) {
+          btmCtx.moveTo(px, sy);
+          started = true;
+        } else {
+          btmCtx.lineTo(px, sy);
+        }
+      }
+      if (started) btmCtx.stroke();
+
+      // Current slope value plotted as a point (x, f'(x))
+      btmCtx.fillStyle = '#34d399';
+      btmCtx.beginPath();
+      btmCtx.arc(toX(curX), toY(slope), 7, 0, Math.PI * 2);
+      btmCtx.fill();
+      btmCtx.strokeStyle = '#ffffff';
+      btmCtx.lineWidth = 2;
+      btmCtx.stroke();
+
+      if (sliderTraceXVal) sliderTraceXVal.innerText = curX.toFixed(2);
+      if (slopeTracerReadout) {
+        slopeTracerReadout.innerHTML = `Tangent Slope: <strong class="${slope >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${slope.toFixed(2)}</strong>`;
+      }
+    }
+
+    if (sliderTraceX) {
+      sliderTraceX.addEventListener('input', () => {
+        renderTopCanvas();
+        renderBottomCanvas();
+      });
+    }
+
+    let traceAnimationId = null;
+    if (btnTracePlay) {
+      btnTracePlay.addEventListener('click', () => {
+        soundClick();
+        if (traceAnimationId) {
+          cancelAnimationFrame(traceAnimationId);
+          traceAnimationId = null;
+          btnTracePlay.innerHTML = '<span>▶ Auto Trace Across Domain</span>';
+          return;
+        }
+
+        btnTracePlay.innerHTML = '<span>⏸ Pause Auto Trace</span>';
+        let tracePos = -2.4;
+        if (sliderTraceX) sliderTraceX.value = tracePos.toFixed(2);
+
+        function stepTrace() {
+          tracePos += 0.025;
+          if (tracePos > 2.4) {
+            tracePos = 2.4;
+            if (sliderTraceX) sliderTraceX.value = tracePos.toFixed(2);
+            renderTopCanvas();
+            renderBottomCanvas();
+            traceAnimationId = null;
+            btnTracePlay.innerHTML = '<span>▶ Auto Trace Across Domain</span>';
+            soundSuccess();
+            showToast("Derivative trace complete!");
+            return;
+          }
+          if (sliderTraceX) sliderTraceX.value = tracePos.toFixed(2);
+          renderTopCanvas();
+          renderBottomCanvas();
+          traceAnimationId = requestAnimationFrame(stepTrace);
+        }
+        traceAnimationId = requestAnimationFrame(stepTrace);
+      });
+    }
+
+    if (traceResetBtn) {
+      traceResetBtn.addEventListener('click', () => {
+        soundClick();
+        if (traceAnimationId) {
+          cancelAnimationFrame(traceAnimationId);
+          traceAnimationId = null;
+          if (btnTracePlay) btnTracePlay.innerHTML = '<span>▶ Auto Trace Across Domain</span>';
+        }
+        if (sliderTraceX) sliderTraceX.value = "-2.0";
+        renderTopCanvas();
+        renderBottomCanvas();
+        showToast("Slope tracer reset to x = -2.0");
+      });
+    }
+
+    /* ========================================================
+       SECTION 4: DERIVATIVE OPTIMIZATION LOGIC & CANVASES
+       ======================================================== */
+    let currentOptScenario = 'box';
+
+    const optScenarios = {
+      box: {
+        title: "The Open-Top Box (Volume Maximization)",
+        geoTitle: "2D Cutout Sheet & 3D Isometric Folded Box",
+        sliderLabel: "Corner Cutout $x$ (cm):",
+        unit: "cm",
+        valUnit: "cm³",
+        min: 0.1,
+        max: 5.9,
+        step: 0.05,
+        defaultVal: 2.0,
+        optimalX: 2.35,
+        f: x => x * (12 - 2 * x) * (18 - 2 * x),
+        df: x => 12 * x * x - 120 * x + 216,
+        d2f: x => 24 * x - 120,
+        formulaKatex: "V(x) = x(12 - 2x)(18 - 2x) = 4x^3 - 60x^2 + 216x",
+        derivativeKatex: "V'(x) = 12x^2 - 120x + 216 = 12(x^2 - 10x + 18)",
+        criticalKatex: "x = \\frac{10 \\pm \\sqrt{100 - 72}}{2} = 5 - \\sqrt{7} \\approx 2.35\\text{ cm}",
+        sdtKatex: "V''(2.35) = 24(2.35) - 120 = -63.6 < 0 \\implies \\text{Concave Down (Maximum!)}"
+      },
+      fence: {
+        title: "The River Fence Enclosure (Area Maximization)",
+        geoTitle: "Pasture Along River (Perimeter $P = 2x + y = 100\\text{ m}$)",
+        sliderLabel: "Perpendicular Fence $x$ (m):",
+        unit: "m",
+        valUnit: "m²",
+        min: 1.0,
+        max: 49.0,
+        step: 0.5,
+        defaultVal: 15.0,
+        optimalX: 25.0,
+        f: x => x * (100 - 2 * x),
+        df: x => 100 - 4 * x,
+        d2f: x => -4,
+        formulaKatex: "A(x) = x(100 - 2x) = 100x - 2x^2",
+        derivativeKatex: "A'(x) = 100 - 4x",
+        criticalKatex: "100 - 4x = 0 \\implies 4x = 100 \\implies x = 25.0\\text{ m}",
+        sdtKatex: "A''(25) = -4 < 0 \\implies \\text{Always Concave Down (Absolute Max)}"
+      },
+      can: {
+        title: "The Aluminum Can (Surface Area Minimization)",
+        geoTitle: "Cylinder Dimensions ($V = \\pi r^2 h = 355\\text{ mL}$)",
+        sliderLabel: "Can Radius $r$ (cm):",
+        unit: "cm",
+        valUnit: "cm²",
+        min: 1.5,
+        max: 7.0,
+        step: 0.05,
+        defaultVal: 5.0,
+        optimalX: 3.84,
+        f: r => 2 * Math.PI * r * r + (710 / r),
+        df: r => 4 * Math.PI * r - (710 / (r * r)),
+        d2f: r => 4 * Math.PI + (1420 / Math.pow(r, 3)),
+        formulaKatex: "S(r) = 2\\pi r^2 + 2\\pi r\\left(\\frac{355}{\\pi r^2}\\right) = 2\\pi r^2 + \\frac{710}{r}",
+        derivativeKatex: "S'(r) = 4\\pi r - \\frac{710}{r^2}",
+        criticalKatex: "4\\pi r^3 = 710 \\implies r = \\sqrt[3]{\\frac{710}{4\\pi}} \\approx 3.84\\text{ cm}",
+        sdtKatex: "S''(3.84) = 4\\pi + \\frac{1420}{(3.84)^3} \\approx 37.7 > 0 \\implies \\text{Concave Up (Minimum!)}"
+      }
+    };
+
+    const optGeoCanvas = document.getElementById('optGeometryCanvas');
+    const optGeoCtx = optGeoCanvas ? optGeoCanvas.getContext('2d') : null;
+    const optCurveCanvas = document.getElementById('optCurveCanvas');
+    const optCurveCtx = optCurveCanvas ? optCurveCanvas.getContext('2d') : null;
+
+    const optSlider = document.getElementById('opt-slider');
+    const optSliderVal = document.getElementById('opt-slider-val');
+    const optSliderLabel = document.getElementById('opt-slider-label');
+    const optMinVal = document.getElementById('opt-min-val');
+    const optMaxVal = document.getElementById('opt-max-val');
+    const optCriticalTag = document.getElementById('opt-critical-tag');
+    const optGeoTitle = document.getElementById('opt-geo-title');
+    const optGeoStat = document.getElementById('opt-geo-stat');
+    const optGraphTitle = document.getElementById('opt-graph-title');
+    const optSlopeReadout = document.getElementById('opt-slope-readout');
+    const optSeekBtn = document.getElementById('opt-seek-btn');
+
+    const optStepFormula = document.getElementById('opt-step-formula');
+    const optStepDerivative = document.getElementById('opt-step-derivative');
+    const optStepCritical = document.getElementById('opt-step-critical');
+    const optStepSdt = document.getElementById('opt-step-sdt');
+    const optStepResult = document.getElementById('opt-step-result');
+
+    function setOptScenario(scenKey) {
+      soundClick();
+      currentOptScenario = scenKey;
+      const scen = optScenarios[scenKey];
+      if (!scen) return;
+
+      ['box', 'fence', 'can'].forEach(k => {
+        const btn = document.getElementById(`opt-btn-${k}`);
+        if (!btn) return;
+        if (k === scenKey) {
+          btn.className = "px-3.5 py-1.5 rounded-xl bg-white text-indigo-700 font-bold text-xs shadow-sm transition";
+        } else {
+          btn.className = "px-3.5 py-1.5 rounded-xl text-slate-600 font-bold text-xs hover:text-indigo-700 transition";
+        }
+      });
+
+      if (optSlider) {
+        optSlider.min = scen.min;
+        optSlider.max = scen.max;
+        optSlider.step = scen.step;
+        optSlider.value = scen.defaultVal;
+      }
+
+      if (optMinVal) optMinVal.innerText = `${scen.min} ${scen.unit}`;
+      if (optMaxVal) optMaxVal.innerText = `${scen.max} ${scen.unit}`;
+      if (optCriticalTag) optCriticalTag.innerText = `Optimal ≈ ${scen.optimalX} ${scen.unit}`;
+      if (optGeoTitle) optGeoTitle.innerText = scen.geoTitle;
+
+      renderOptimizationCanvases();
+      updateOptimizationMath();
+    }
+
+    function renderOptimizationCanvases() {
+      renderOptGeometry();
+      renderOptCalculusCurve();
+    }
+
+    function renderOptGeometry() {
+      if (!optGeoCanvas || !optGeoCtx) return;
+      resizeCanvas(optGeoCanvas);
+      const w = optGeoCanvas.getBoundingClientRect().width;
+      const h = optGeoCanvas.getBoundingClientRect().height;
+      const xVal = parseFloat(optSlider ? optSlider.value : 2.0);
+      const scen = optScenarios[currentOptScenario];
+
+      optGeoCtx.clearRect(0, 0, w, h);
+
+      if (currentOptScenario === 'box') {
+        const leftW = w * 0.48;
+        const rightW = w * 0.48;
+
+        // Left side: 2D Unfolded Sheet
+        const sheetW = leftW * 0.75;
+        const sheetH = sheetW * (12 / 18);
+        const originX = (leftW - sheetW) / 2 + 10;
+        const originY = (h - sheetH) / 2;
+
+        optGeoCtx.fillStyle = 'rgba(99, 102, 241, 0.15)';
+        optGeoCtx.fillRect(originX, originY, sheetW, sheetH);
+        optGeoCtx.strokeStyle = '#818cf8';
+        optGeoCtx.lineWidth = 1.5;
+        optGeoCtx.strokeRect(originX, originY, sheetW, sheetH);
+
+        const cutScale = (xVal / 18) * sheetW;
+        optGeoCtx.fillStyle = '#ef4444';
+        // 4 Cut corners
+        optGeoCtx.fillRect(originX, originY, cutScale, cutScale);
+        optGeoCtx.fillRect(originX + sheetW - cutScale, originY, cutScale, cutScale);
+        optGeoCtx.fillRect(originX, originY + sheetH - cutScale, cutScale, cutScale);
+        optGeoCtx.fillRect(originX + sheetW - cutScale, originY + sheetH - cutScale, cutScale, cutScale);
+
+        // Fold lines
+        optGeoCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        optGeoCtx.setLineDash([3, 3]);
+        optGeoCtx.strokeRect(originX + cutScale, originY + cutScale, sheetW - 2 * cutScale, sheetH - 2 * cutScale);
+        optGeoCtx.setLineDash([]);
+
+        // Sheet labels
+        optGeoCtx.font = 'bold 10px monospace';
+        optGeoCtx.fillStyle = '#cbd5e1';
+        optGeoCtx.fillText(`18 cm`, originX + sheetW / 2 - 15, originY - 6);
+        optGeoCtx.fillText(`12 cm`, originX - 34, originY + sheetH / 2);
+        optGeoCtx.fillStyle = '#f87171';
+        optGeoCtx.fillText(`x=${xVal.toFixed(1)}`, originX + 2, originY + cutScale + 10);
+
+        // Right side: 3D Isometric Box
+        const bOriginX = w * 0.58;
+        const bOriginY = h * 0.72;
+        const bLength = (18 - 2 * xVal) * 5;
+        const bWidth = (12 - 2 * xVal) * 4;
+        const bHeight = xVal * 12;
+
+        const ang = Math.PI / 6;
+        const cosA = Math.cos(ang);
+        const sinA = Math.sin(ang);
+
+        // Draw bottom plane
+        optGeoCtx.fillStyle = '#1e293b';
+        optGeoCtx.beginPath();
+        optGeoCtx.moveTo(bOriginX, bOriginY);
+        optGeoCtx.lineTo(bOriginX + bLength * cosA, bOriginY - bLength * sinA);
+        optGeoCtx.lineTo(bOriginX + bLength * cosA - bWidth * cosA, bOriginY - bLength * sinA - bWidth * sinA);
+        optGeoCtx.lineTo(bOriginX - bWidth * cosA, bOriginY - bWidth * sinA);
+        optGeoCtx.closePath();
+        optGeoCtx.fill();
+
+        // Draw sides
+        optGeoCtx.fillStyle = 'rgba(56, 189, 248, 0.7)';
+        optGeoCtx.beginPath();
+        optGeoCtx.moveTo(bOriginX, bOriginY);
+        optGeoCtx.lineTo(bOriginX + bLength * cosA, bOriginY - bLength * sinA);
+        optGeoCtx.lineTo(bOriginX + bLength * cosA, bOriginY - bLength * sinA - bHeight);
+        optGeoCtx.lineTo(bOriginX, bOriginY - bHeight);
+        optGeoCtx.closePath();
+        optGeoCtx.fill();
+        optGeoCtx.strokeStyle = '#bae6fd';
+        optGeoCtx.stroke();
+
+        optGeoCtx.fillStyle = 'rgba(14, 165, 233, 0.85)';
+        optGeoCtx.beginPath();
+        optGeoCtx.moveTo(bOriginX, bOriginY);
+        optGeoCtx.lineTo(bOriginX - bWidth * cosA, bOriginY - bWidth * sinA);
+        optGeoCtx.lineTo(bOriginX - bWidth * cosA, bOriginY - bWidth * sinA - bHeight);
+        optGeoCtx.lineTo(bOriginX, bOriginY - bHeight);
+        optGeoCtx.closePath();
+        optGeoCtx.fill();
+        optGeoCtx.strokeStyle = '#7dd3fc';
+        optGeoCtx.stroke();
+
+        optGeoCtx.font = 'bold 11px "Plus Jakarta Sans"';
+        optGeoCtx.fillStyle = '#38bdf8';
+        optGeoCtx.fillText(`Folded Box Height h = ${xVal.toFixed(2)} cm`, bOriginX - 20, 24);
+
+      } else if (currentOptScenario === 'fence') {
+        // Fence along river visualization
+        const riverH = h * 0.35;
+        optGeoCtx.fillStyle = '#0369a1';
+        optGeoCtx.fillRect(0, 0, w, riverH);
+
+        optGeoCtx.font = 'bold 12px "Plus Jakarta Sans"';
+        optGeoCtx.fillStyle = '#bae6fd';
+        optGeoCtx.fillText('🌊 Natural Flowing River (No Fencing Needed on this Edge)', 20, 25);
+
+        // Ground pasture
+        optGeoCtx.fillStyle = '#14532d';
+        optGeoCtx.fillRect(0, riverH, w, h - riverH);
+
+        const yLen = 100 - 2 * xVal;
+        const scaleW = (yLen / 100) * (w * 0.65);
+        const scaleH = (xVal / 50) * (h * 0.5);
+
+        const fenceX = (w - scaleW) / 2;
+        const fenceY = riverH;
+
+        optGeoCtx.fillStyle = 'rgba(34, 197, 94, 0.25)';
+        optGeoCtx.fillRect(fenceX, fenceY, scaleW, scaleH);
+
+        optGeoCtx.strokeStyle = '#facc15';
+        optGeoCtx.lineWidth = 3.5;
+        optGeoCtx.beginPath();
+        optGeoCtx.moveTo(fenceX, fenceY);
+        optGeoCtx.lineTo(fenceX, fenceY + scaleH);
+        optGeoCtx.lineTo(fenceX + scaleW, fenceY + scaleH);
+        optGeoCtx.lineTo(fenceX + scaleW, fenceY);
+        optGeoCtx.stroke();
+
+        optGeoCtx.font = 'bold 11px monospace';
+        optGeoCtx.fillStyle = '#fef08a';
+        optGeoCtx.fillText(`x = ${xVal.toFixed(1)} m`, fenceX - 58, fenceY + scaleH / 2);
+        optGeoCtx.fillText(`x = ${xVal.toFixed(1)} m`, fenceX + scaleW + 8, fenceY + scaleH / 2);
+        optGeoCtx.fillText(`y = 100 - 2x = ${yLen.toFixed(1)} m`, fenceX + scaleW / 2 - 50, fenceY + scaleH + 18);
+
+      } else {
+        // Can Surface Area
+        const rVal = xVal;
+        const hVal = 355 / (Math.PI * rVal * rVal);
+
+        const centerX = w / 2;
+        const centerY = h / 2 + 10;
+        const drawR = rVal * 15;
+        const drawH = Math.min(130, hVal * 12);
+
+        // Top ellipse
+        optGeoCtx.fillStyle = '#475569';
+        optGeoCtx.strokeStyle = '#94a3b8';
+        optGeoCtx.lineWidth = 2;
+        optGeoCtx.beginPath();
+        optGeoCtx.ellipse(centerX, centerY - drawH / 2, drawR, drawR * 0.35, 0, 0, Math.PI * 2);
+        optGeoCtx.fill();
+        optGeoCtx.stroke();
+
+        // Body
+        optGeoCtx.fillStyle = 'rgba(100, 116, 139, 0.6)';
+        optGeoCtx.beginPath();
+        optGeoCtx.ellipse(centerX, centerY + drawH / 2, drawR, drawR * 0.35, 0, 0, Math.PI);
+        optGeoCtx.lineTo(centerX - drawR, centerY - drawH / 2);
+        optGeoCtx.ellipse(centerX, centerY - drawH / 2, drawR, drawR * 0.35, 0, Math.PI, 0);
+        optGeoCtx.lineTo(centerX + drawR, centerY + drawH / 2);
+        optGeoCtx.closePath();
+        optGeoCtx.fill();
+        optGeoCtx.stroke();
+
+        // Dimensions text
+        optGeoCtx.font = 'bold 11px monospace';
+        optGeoCtx.fillStyle = '#38bdf8';
+        optGeoCtx.fillText(`Radius r = ${rVal.toFixed(2)} cm`, centerX - 40, centerY - drawH / 2 - 16);
+        optGeoCtx.fillStyle = '#fbbf24';
+        optGeoCtx.fillText(`Height h = ${hVal.toFixed(2)} cm`, centerX + drawR + 10, centerY);
+      }
+    }
+
+    function renderOptCalculusCurve() {
+      if (!optCurveCanvas || !optCurveCtx) return;
+      resizeCanvas(optCurveCanvas);
+      const w = optCurveCanvas.getBoundingClientRect().width;
+      const h = optCurveCanvas.getBoundingClientRect().height;
+      const scen = optScenarios[currentOptScenario];
+      const curX = parseFloat(optSlider ? optSlider.value : 2.0);
+
+      optCurveCtx.clearRect(0, 0, w, h);
+
+      let minX = scen.min, maxX = scen.max;
+      let minY = Infinity, maxY = -Infinity;
+
+      for (let px = 0; px <= w; px += 4) {
+        const xVal = minX + (px / w) * (maxX - minX);
+        const yVal = scen.f(xVal);
+        if (yVal < minY) minY = yVal;
+        if (yVal > maxY) maxY = yVal;
+      }
+
+      const padY = (maxY - minY) * 0.15;
+      minY -= padY;
+      maxY += padY;
+
+      function toX(x) { return ((x - minX) / (maxX - minX)) * w; }
+      function toY(y) { return h - ((y - minY) / (maxY - minY)) * h; }
+
+      // Grid
+      optCurveCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      optCurveCtx.lineWidth = 1;
+      for (let step = minX; step <= maxX; step += (maxX - minX) / 6) {
+        optCurveCtx.beginPath();
+        optCurveCtx.moveTo(toX(step), 0);
+        optCurveCtx.lineTo(toX(step), h);
+        optCurveCtx.stroke();
+      }
+
+      // Objective function curve
+      optCurveCtx.beginPath();
+      optCurveCtx.strokeStyle = '#e879f9';
+      optCurveCtx.lineWidth = 3.5;
+      for (let px = 0; px <= w; px += 2) {
+        const xVal = minX + (px / w) * (maxX - minX);
+        const yVal = scen.f(xVal);
+        const sy = toY(yVal);
+        if (px === 0) optCurveCtx.moveTo(px, sy);
+        else optCurveCtx.lineTo(px, sy);
+      }
+      optCurveCtx.stroke();
+
+      // Critical Point vertical marker
+      const optScreenX = toX(scen.optimalX);
+      optCurveCtx.strokeStyle = 'rgba(52, 211, 153, 0.4)';
+      optCurveCtx.lineWidth = 1.5;
+      optCurveCtx.setLineDash([4, 4]);
+      optCurveCtx.beginPath();
+      optCurveCtx.moveTo(optScreenX, 0);
+      optCurveCtx.lineTo(optScreenX, h);
+      optCurveCtx.stroke();
+      optCurveCtx.setLineDash([]);
+
+      optCurveCtx.font = 'bold 10px monospace';
+      optCurveCtx.fillStyle = '#34d399';
+      optCurveCtx.fillText(`Extremum: x* = ${scen.optimalX}`, optScreenX + 6, 20);
+
+      // Current point & tangent line
+      const curY = scen.f(curX);
+      const slope = scen.df(curX);
+
+      const tanSpan = (maxX - minX) * 0.18;
+      const xA = curX - tanSpan;
+      const xB = curX + tanSpan;
+      const yA = curY + slope * (xA - curX);
+      const yB = curY + slope * (xB - curX);
+
+      // Tangent line
+      optCurveCtx.strokeStyle = Math.abs(slope) < 1.0 ? '#34d399' : '#f59e0b';
+      optCurveCtx.lineWidth = 2.5;
+      optCurveCtx.beginPath();
+      optCurveCtx.moveTo(toX(xA), toY(yA));
+      optCurveCtx.lineTo(toX(xB), toY(yB));
+      optCurveCtx.stroke();
+
+      // Current evaluation point
+      optCurveCtx.fillStyle = Math.abs(slope) < 1.0 ? '#34d399' : '#f59e0b';
+      optCurveCtx.beginPath();
+      optCurveCtx.arc(toX(curX), toY(curY), 7, 0, Math.PI * 2);
+      optCurveCtx.fill();
+      optCurveCtx.strokeStyle = '#ffffff';
+      optCurveCtx.lineWidth = 2;
+      optCurveCtx.stroke();
+
+      if (optSlopeReadout) {
+        optSlopeReadout.innerHTML = `Tangent Slope: <strong class="${Math.abs(slope) < 1.0 ? 'text-emerald-400 font-extrabold' : 'text-amber-400'}">${slope >= 0 ? '+' : ''}${slope.toFixed(2)}</strong>`;
+      }
+    }
+
+    function updateOptimizationMath() {
+      const scen = optScenarios[currentOptScenario];
+      const curX = parseFloat(optSlider ? optSlider.value : 2.0);
+      const curVal = scen.f(curX);
+
+      if (optSliderVal) optSliderVal.innerText = `${curX.toFixed(2)} ${scen.unit}`;
+      if (optGeoStat) optGeoStat.innerText = `x = ${curX.toFixed(2)} ${scen.unit}`;
+      if (optStepFormula) optStepFormula.innerHTML = `$${scen.formulaKatex}$`;
+      if (optStepDerivative) optStepDerivative.innerHTML = `$${scen.derivativeKatex}$`;
+      if (optStepCritical) optStepCritical.innerHTML = `$${scen.criticalKatex}$`;
+      if (optStepSdt) optStepSdt.innerHTML = `$${scen.sdtKatex}$`;
+      if (optStepResult) optStepResult.innerHTML = `Current Value: <strong class="text-indigo-700">${curVal.toFixed(2)} ${scen.valUnit}</strong>`;
+
+      if (window.renderMathInElement) {
+        const mathCards = [optStepFormula, optStepDerivative, optStepCritical, optStepSdt, optStepResult];
+        mathCards.forEach(c => {
+          if (c) renderMathInElement(c, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}] });
+        });
+      }
+    }
+
+    if (optSlider) {
+      optSlider.addEventListener('input', () => {
+        renderOptimizationCanvases();
+        updateOptimizationMath();
+      });
+    }
+
+    let optSeekAnimId = null;
+    if (optSeekBtn) {
+      optSeekBtn.addEventListener('click', () => {
+        soundClick();
+        if (optSeekAnimId) cancelAnimationFrame(optSeekAnimId);
+        const scen = optScenarios[currentOptScenario];
+        if (!optSlider) return;
+
+        const startVal = parseFloat(optSlider.value);
+        const targetVal = scen.optimalX;
+        const duration = 1200;
+        const startTime = performance.now();
+
+        function stepSeek(now) {
+          const elapsed = now - startTime;
+          const prog = Math.min(1, elapsed / duration);
+          const ease = 1 - Math.pow(1 - prog, 3);
+          const currentVal = startVal + (targetVal - startVal) * ease;
+          optSlider.value = currentVal.toFixed(2);
+          renderOptimizationCanvases();
+          updateOptimizationMath();
+
+          if (prog < 1) {
+            optSeekAnimId = requestAnimationFrame(stepSeek);
+          } else {
+            soundSuccess();
+            showToast(`🎯 Found Critical Point: x = ${targetVal} ${scen.unit} (Slope = 0)`);
+          }
+        }
+        optSeekAnimId = requestAnimationFrame(stepSeek);
+      });
+    }
+
+    // Optimization Student Exercise logic
+    let currentChallengeSize = 18;
+    const btnNewOptChallenge = document.getElementById('btn-new-opt-challenge');
+    const optChallengeDesc = document.getElementById('opt-challenge-desc');
+    const optChallengeInput = document.getElementById('opt-challenge-input');
+    const optChallengeSubmit = document.getElementById('opt-challenge-submit');
+    const optChallengeFeedback = document.getElementById('opt-challenge-feedback');
+
+    function generateOptChallenge() {
+      const sizes = [12, 18, 24, 30, 36, 42];
+      currentChallengeSize = sizes[Math.floor(Math.random() * sizes.length)];
+      if (optChallengeDesc) {
+        optChallengeDesc.innerHTML = `A cardboard square measures <strong class="text-cyan-300 font-mono">${currentChallengeSize} cm × ${currentChallengeSize} cm</strong>. You cut square corners of side length $x$ and fold up the sides to form an open-top box. Calculate the exact cut length $x$ that maximizes the volume.`;
+      }
+      if (optChallengeInput) optChallengeInput.value = '';
+      if (optChallengeFeedback) {
+        optChallengeFeedback.classList.add('hidden');
+        optChallengeFeedback.innerHTML = '';
+      }
+      if (window.renderMathInElement && optChallengeDesc) {
+        renderMathInElement(optChallengeDesc, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}] });
+      }
+    }
+
+    if (btnNewOptChallenge) {
+      btnNewOptChallenge.addEventListener('click', () => {
+        soundClick();
+        generateOptChallenge();
+      });
+    }
+
+    if (optChallengeSubmit) {
+      optChallengeSubmit.addEventListener('click', () => {
+        const studentAns = parseFloat(optChallengeInput ? optChallengeInput.value : '');
+        const expectedAns = currentChallengeSize / 6;
+
+        if (isNaN(studentAns)) {
+          showToast("Please enter a valid numeric answer!");
+          return;
+        }
+
+        if (optChallengeFeedback) {
+          optChallengeFeedback.classList.remove('hidden');
+          if (Math.abs(studentAns - expectedAns) < 0.1) {
+            soundSuccess();
+            optChallengeFeedback.className = "mt-3 p-3 rounded-xl text-xs font-semibold bg-emerald-950 border border-emerald-600 text-emerald-200";
+            optChallengeFeedback.innerHTML = `✅ Outstanding! For any square sheet of side $S$, the optimal corner cut is always $x = \\frac{S}{6} = \\frac{${currentChallengeSize}}{6} = ${expectedAns.toFixed(2)}\\text{ cm}$.`;
+          } else {
+            playTone(220, 'sawtooth', 0.25);
+            optChallengeFeedback.className = "mt-3 p-3 rounded-xl text-xs font-semibold bg-rose-950 border border-rose-600 text-rose-200";
+            optChallengeFeedback.innerHTML = `❌ Not quite. Differentiate $V(x) = x(${currentChallengeSize}-2x)^2$: Setting $V'(x) = 0$ yields $x = \\frac{${currentChallengeSize}}{6} = ${expectedAns.toFixed(2)}\\text{ cm}$.`;
+          }
+          if (window.renderMathInElement) {
+            renderMathInElement(optChallengeFeedback, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}] });
+          }
+        }
+      });
+    }
+
+    /* ========================================================
+       SECTION 5: MASTERY ARENA (20-QUESTION BANK, 10 RANDOMIZED)
+       ======================================================== */
+    const masterQuestionBank = [
+      // DOK 1: Recall & Reproduction
+      {
+        id: 1,
+        dok: "DOK 1",
+        category: "Limits & Definition",
+        text: "In the limit definition $f'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$, what does the quotient $\\frac{f(x+h)-f(x)}{h}$ represent geometrically before the limit is taken?",
+        options: [
+          "The average rate of change (secant line slope) between $(x, f(x))$ and $(x+h, f(x+h))$",
+          "The instantaneous rate of change of the tangent line at $x$",
+          "The concavity of the curve at point $x$",
+          "The total signed area beneath $f(x)$ on the interval $[x, x+h]$"
+        ],
+        correct: 0,
+        hint: "Recall: Two points on a curve define a secant line before $h$ collapses to zero.",
+        feedback: "Correct! The expression $\\frac{\\Delta y}{\\Delta x}$ is the average secant slope over the interval of width $h$."
+      },
+      {
+        id: 2,
+        dok: "DOK 1",
+        category: "Power Rule Recall",
+        text: "Using the power rule, what is the derivative of $f(x) = 7x^6$?",
+        options: [
+          "$42x^5$",
+          "$42x^7$",
+          "$7x^5$",
+          "$13x^5$"
+        ],
+        correct: 0,
+        hint: "Multiply the coefficient by the current power, then decrement the exponent by 1: $7 \\times 6 = 42$.",
+        feedback: "Correct! $\\frac{d}{dx}[7x^6] = 7 \\cdot 6x^{6-1} = 42x^5$."
+      },
+      {
+        id: 3,
+        dok: "DOK 1",
+        category: "Trigonometric Derivatives",
+        text: "What is the standard derivative $\\frac{d}{dx}[\\sin(x)]$?",
+        options: [
+          "$\\cos(x)$",
+          "$-\\cos(x)$",
+          "$\\sec^2(x)$",
+          "$-\\sin(x)$"
+        ],
+        correct: 0,
+        hint: "The slope of the sine wave at $x=0$ is $+1$, matching the value of $\\cos(0) = 1$.",
+        feedback: "Exactly! $\\frac{d}{dx}[\\sin(x)] = \\cos(x)$."
+      },
+      {
+        id: 4,
+        dok: "DOK 1",
+        category: "Exponential Rules",
+        text: "What is the derivative of the natural exponential function $f(x) = e^x$?",
+        options: [
+          "$e^x$",
+          "$x e^{x-1}$",
+          "$\\ln(x) e^x$",
+          "$\\frac{1}{x}$"
+        ],
+        correct: 0,
+        hint: "The natural base $e$ has the remarkable property that its instantaneous rate of change equals its current height.",
+        feedback: "Correct! $e^x$ is its own derivative."
+      },
+      {
+        id: 5,
+        dok: "DOK 1",
+        category: "Constant Rule",
+        text: "If $f(x) = \\pi^3$, what is $f'(x)$?",
+        options: [
+          "$0$",
+          "$3\\pi^2$",
+          "$\\pi^2$",
+          "$3\\pi$"
+        ],
+        correct: 0,
+        hint: "Be careful: $\\pi$ is a constant, not a variable! The graph of $y = \\pi^3$ is a horizontal line.",
+        feedback: "Spot on! The derivative of any constant value is 0 because horizontal lines have zero slope."
+      },
+
+      // DOK 2: Skills & Concepts
+      {
+        id: 6,
+        dok: "DOK 2",
+        category: "Fractional Power Rule",
+        text: "Find the derivative of $f(x) = 6\\sqrt{x} - \\frac{4}{x}$.",
+        options: [
+          "$\\frac{3}{\\sqrt{x}} + \\frac{4}{x^2}$",
+          "$\\frac{3}{\\sqrt{x}} - \\frac{4}{x^2}$",
+          "$3\\sqrt{x} + 4\\ln(x)$",
+          "$\\frac{6}{\\sqrt{x}} - \\frac{4}{x^2}$"
+        ],
+        correct: 0,
+        hint: "Rewrite as powers: $6x^{1/2} - 4x^{-1}$. Apply power rule to each term.",
+        feedback: "Great job! $6(\\frac{1}{2})x^{-1/2} - 4(-1)x^{-2} = \\frac{3}{\\sqrt{x}} + \\frac{4}{x^2}$."
+      },
+      {
+        id: 7,
+        dok: "DOK 2",
+        category: "Product Rule Skills",
+        text: "What is $\\frac{d}{dx}[x^2 e^x]$ evaluated at $x = 1$?",
+        options: [
+          "$3e$",
+          "$2e$",
+          "$e$",
+          "$4e$"
+        ],
+        correct: 0,
+        hint: "Product Rule: $u'v + uv' = 2x e^x + x^2 e^x = (2x+x^2)e^x$. Plug in $x=1$.",
+        feedback: "Accurate! For $x=1$, $(2(1) + 1^2)e^1 = (2+1)e = 3e$."
+      },
+      {
+        id: 8,
+        dok: "DOK 2",
+        category: "Chain Rule Skills",
+        text: "Differentiate $g(x) = (3x^2 - 5)^4$.",
+        options: [
+          "$24x(3x^2 - 5)^3$",
+          "$4(3x^2 - 5)^3$",
+          "$12x(3x^2 - 5)^3$",
+          "$24(3x^2 - 5)^3$"
+        ],
+        correct: 0,
+        hint: "Chain Rule: Outside derivative $4(\\dots)^3$ times derivative of inside $(6x)$.",
+        feedback: "Correct! $4(3x^2 - 5)^3 \\cdot (6x) = 24x(3x^2 - 5)^3$."
+      },
+      {
+        id: 9,
+        dok: "DOK 2",
+        category: "Quotient Rule Skills",
+        text: "Find the derivative of $f(x) = \\frac{x}{x+1}$.",
+        options: [
+          "$\\frac{1}{(x+1)^2}$",
+          "$\\frac{-1}{(x+1)^2}$",
+          "$\\frac{2x+1}{(x+1)^2}$",
+          "$1$"
+        ],
+        correct: 0,
+        hint: "Quotient Rule: $\\frac{v u' - u v'}{v^2} = \\frac{(x+1)(1) - x(1)}{(x+1)^2}$.",
+        feedback: "Well done! Simplifying the numerator yields $(x+1) - x = 1$, so $f'(x) = \\frac{1}{(x+1)^2}$."
+      },
+      {
+        id: 10,
+        dok: "DOK 2",
+        category: "General Exponential Base",
+        text: "Differentiate $y = 5^x$.",
+        options: [
+          "$5^x \\ln(5)$",
+          "$x 5^{x-1}$",
+          "$\\frac{5^x}{\\ln(5)}$",
+          "$5^x$"
+        ],
+        correct: 0,
+        hint: "Remember the base $a$ formula: $\\frac{d}{dx}[a^x] = a^x \\ln(a)$.",
+        feedback: "Correct! The constant base multiplier requires scaling by $\\ln(5)$."
+      },
+
+      // DOK 3: Strategic Thinking
+      {
+        id: 11,
+        dok: "DOK 3",
+        category: "Tangent Line Equations",
+        text: "Find the equation of the tangent line to $f(x) = x^3 - 2x + 1$ at $x = 1$.",
+        options: [
+          "$y = x - 1$",
+          "$y = x + 1$",
+          "$y = 3x - 3$",
+          "$y = -x + 1$"
+        ],
+        correct: 0,
+        hint: "1. Calculate point $(1, f(1)) = (1, 0)$. 2. Find slope $f'(x) = 3x^2 - 2 \\Rightarrow f'(1) = 1$. 3. Point-slope equation: $y - 0 = 1(x - 1)$.",
+        feedback: "Brilliant! Point is $(1, 0)$, slope is $m=1$, giving $y = x - 1$."
+      },
+      {
+        id: 12,
+        dok: "DOK 3",
+        category: "Horizontal Tangents",
+        text: "At what $x$-values does the function $f(x) = 2x^3 - 3x^2 - 12x + 5$ have horizontal tangent lines?",
+        options: [
+          "$x = -1$ and $x = 2$",
+          "$x = 1$ and $x = -2$",
+          "$x = 0$ and $x = 3$",
+          "$x = -3$ and $x = 2$"
+        ],
+        correct: 0,
+        hint: "Horizontal tangent means $f'(x) = 0$. Solve $6x^2 - 6x - 12 = 0 \\Rightarrow 6(x^2 - x - 2) = 0$.",
+        feedback: "Spot on! Factoring gives $6(x-2)(x+1) = 0$, so $x = -1$ and $x = 2$."
+      },
+      {
+        id: 13,
+        dok: "DOK 3",
+        category: "Trig Chain Composition",
+        text: "Find the derivative of $h(x) = \\cos^3(2x)$.",
+        options: [
+          "$-6 \\cos^2(2x) \\sin(2x)$",
+          "$-3 \\cos^2(2x) \\sin(2x)$",
+          "$6 \\cos^2(2x) \\sin(2x)$",
+          "$-6 \\sin^2(2x)$"
+        ],
+        correct: 0,
+        hint: "Double chain rule: Outer is $(\\dots)^3$, middle is $\\cos(2x)$, inner is $2x$. Product: $3\\cos^2(2x) \\cdot (-\\sin(2x)) \\cdot 2$.",
+        feedback: "Awesome reasoning! Three layers of composition yield $-6\\cos^2(2x)\\sin(2x)$."
+      },
+      {
+        id: 14,
+        dok: "DOK 3",
+        category: "Particle Motion",
+        text: "The position of a particle is given by $s(t) = t^3 - 6t^2 + 9t$. At what times is the particle instantaneously at rest ($v(t) = 0$)?",
+        options: [
+          "$t = 1$ and $t = 3$",
+          "$t = 0$ and $t = 3$",
+          "$t = 2$ and $t = 4$",
+          "$t = 3$ only"
+        ],
+        correct: 0,
+        hint: "Velocity is $v(t) = s'(t) = 3t^2 - 12t + 9$. Set $v(t) = 0$ and solve for $t$.",
+        feedback: "Correct! $3(t^2 - 4t + 3) = 3(t-1)(t-3) = 0$, which yields $t=1$ and $t=3$."
+      },
+      {
+        id: 15,
+        dok: "DOK 3",
+        category: "Graphical Derivative Matching",
+        text: "If $f'(x) > 0$ on the interval $(1, 4)$ and $f'(x) < 0$ on $(4, 7)$, what feature must the continuous function $f(x)$ have at $x = 4$?",
+        options: [
+          "A local maximum",
+          "A local minimum",
+          "An inflection point with positive slope",
+          "A vertical asymptote"
+        ],
+        correct: 0,
+        hint: "First Derivative Test: If $f'$ transitions from positive (increasing) to negative (decreasing), the graph goes uphill then downhill.",
+        feedback: "Exactly! Passing from increasing to decreasing establishes a local maximum."
+      },
+
+      // DOK 4: Extended Reasoning & Synthesis
+      {
+        id: 16,
+        dok: "DOK 4",
+        category: "Differentiability & Continuity",
+        text: "Let $f(x) = \\begin{cases} ax^2 + 1, & x \\le 1 \\\\ 4x + b, & x > 1 \\end{cases}$. For $f(x)$ to be differentiable everywhere, what values must $a$ and $b$ take?",
+        options: [
+          "$a = 2, \\; b = -1$",
+          "$a = 4, \\; b = -3$",
+          "$a = 2, \\; b = 1$",
+          "$a = 1, \\; b = -2$"
+        ],
+        correct: 0,
+        hint: "1. Match slopes: $2a(1) = 4 \\Rightarrow a = 2$. 2. Match values for continuity: $a(1)^2 + 1 = 4(1) + b \\Rightarrow 3 = 4 + b \\Rightarrow b = -1$.",
+        feedback: "Outstanding synthesis! Differentiability requires both matching derivatives ($a=2$) and matching functional values ($b=-1$)."
+      },
+      {
+        id: 17,
+        dok: "DOK 4",
+        category: "Higher Order Derivatives & Patterns",
+        text: "Find the 50th derivative $f^{(50)}(x)$ of $f(x) = \\sin(x)$.",
+        options: [
+          "$-\\sin(x)$",
+          "$\\sin(x)$",
+          "$\\cos(x)$",
+          "$-\\cos(x)$"
+        ],
+        correct: 0,
+        hint: "Derivatives of $\\sin(x)$ repeat in a 4-cycle: $\\cos x$, $-\\sin x$, $-\\cos x$, $\\sin x$. Find $50 \\pmod 4$.",
+        feedback: "Phenomenal! $50 = 4 \\times 12 + 2$. The remainder of 2 matches the 2nd derivative: $\\frac{d^2}{dx^2}[\\sin x] = -\\sin(x)$."
+      },
+      {
+        id: 18,
+        dok: "DOK 4",
+        category: "Product & Chain Modeling",
+        text: "If $h(x) = x \\cdot f(x^2)$, $f(4) = 3$, and $f'(4) = 5$, what is $h'(2)$?",
+        options: [
+          "$43$",
+          "$23$",
+          "$13$",
+          "$53$"
+        ],
+        correct: 0,
+        hint: "By product and chain rule: $h'(x) = 1 \\cdot f(x^2) + x \\cdot f'(x^2)(2x) = f(x^2) + 2x^2 f'(x^2)$. Evaluate at $x=2$: $f(4) + 2(4)f'(4) = 3 + 8(5) = 43$.",
+        feedback: "Superb multi-step calculus! $h'(2) = f(4) + 8f'(4) = 3 + 40 = 43$."
+      },
+      {
+        id: 19,
+        dok: "DOK 4",
+        category: "Inverse Derivative Relationships",
+        text: "Let $g(x)$ be the inverse of $f(x) = x^3 + 2x - 1$. Given that $f(1) = 2$, find the derivative of the inverse $g'(2)$.",
+        options: [
+          "$\\frac{1}{5}$",
+          "$5$",
+          "$\\frac{1}{3}$",
+          "$\\frac{1}{2}$"
+        ],
+        correct: 0,
+        hint: "Inverse derivative rule: $g'(b) = \\frac{1}{f'(g(b))}$. Here $g(2) = 1$. Since $f'(x) = 3x^2 + 2$, evaluate $f'(1) = 5$.",
+        feedback: "Masterclass! Since $g(2) = 1$ and $f'(1) = 5$, the reciprocal slope formula gives $g'(2) = 1/5$."
+      },
+      {
+        id: 20,
+        dok: "DOK 4",
+        category: "Extreme Value & Rate Modeling",
+        text: "A rectangular open-top box is made from a $12 \\times 12$ cm sheet of metal by cutting square corners of length $x$. To maximize volume $V(x) = x(12 - 2x)^2$, at what value of $x$ does $\\frac{dV}{dx} = 0$ in the realistic domain $(0, 6)$?",
+        options: [
+          "$x = 2$",
+          "$x = 3$",
+          "$x = 4$",
+          "$x = 1.5$"
+        ],
+        correct: 0,
+        hint: "Expand or product rule: $V(x) = 4x^3 - 48x^2 + 144x$. $V'(x) = 12x^2 - 96x + 144 = 12(x^2 - 8x + 12) = 12(x-2)(x-6) = 0$.",
+        feedback: "Outstanding optimization work! In $(0, 6)$, the critical point is $x = 2$, which maximizes the box's volume."
+      }
+    ];
+
+    let sessionQuestions = [];
+    let currentQuizIndex = 0;
+    let quizScore = 0;
+    let answeredCurrent = false;
+
+    const quizStepCount = document.getElementById('quiz-step-count');
+    const quizDokBadge = document.getElementById('quiz-dok-badge');
+    const quizCategory = document.getElementById('quiz-category');
+    const quizQuestionText = document.getElementById('quiz-question-text');
+    const quizOptionsContainer = document.getElementById('quiz-options-container');
+    const quizFeedback = document.getElementById('quiz-feedback');
+    const quizHintBtn = document.getElementById('quiz-hint-btn');
+    const quizNextBtn = document.getElementById('quiz-next-btn');
+    const quizScoreDisplay = document.getElementById('quiz-score');
+    const completionBanner = document.getElementById('completion-banner');
+    const quizCard = document.getElementById('quiz-card');
+
+    function shuffleArray(array) {
+      const arr = [...array];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function initializeRandomizedSession() {
+      const shuffledMaster = shuffleArray(masterQuestionBank);
+      const selectedTen = shuffledMaster.slice(0, 10);
+
+      sessionQuestions = selectedTen.map(q => {
+        const originalOptions = q.options.map((optText, origIdx) => ({
+          text: optText,
+          isCorrect: origIdx === q.correct
+        }));
+        const shuffledOptions = shuffleArray(originalOptions);
+        const newCorrectIndex = shuffledOptions.findIndex(o => o.isCorrect);
+
+        return {
+          ...q,
+          options: shuffledOptions.map(o => o.text),
+          correct: newCorrectIndex
+        };
+      });
+
+      currentQuizIndex = 0;
+      quizScore = 0;
+      if (quizScoreDisplay) quizScoreDisplay.innerText = `0 / 10`;
+    }
+
+    function loadQuizQuestion() {
+      answeredCurrent = false;
+      const q = sessionQuestions[currentQuizIndex];
+      if (!q) return;
+
+      if (quizStepCount) quizStepCount.innerText = `Question ${currentQuizIndex + 1} of 10`;
+      if (quizDokBadge) {
+        quizDokBadge.innerText = q.dok;
+        if (q.dok === 'DOK 1') {
+          quizDokBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800';
+        } else if (q.dok === 'DOK 2') {
+          quizDokBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800';
+        } else if (q.dok === 'DOK 3') {
+          quizDokBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800';
+        } else {
+          quizDokBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-100 text-purple-800';
+        }
+      }
+
+      if (quizCategory) quizCategory.innerText = q.category;
+      if (quizQuestionText) quizQuestionText.innerHTML = q.text;
+
+      if (quizFeedback) quizFeedback.classList.add('hidden');
+      if (quizNextBtn) quizNextBtn.classList.add('hidden');
+      if (quizHintBtn) quizHintBtn.classList.remove('hidden');
+
+      if (quizOptionsContainer) {
+        quizOptionsContainer.innerHTML = '';
+        q.options.forEach((opt, idx) => {
+          const btn = document.createElement('button');
+          btn.className = 'w-full text-left p-3.5 rounded-2xl border-2 border-slate-200 hover:border-indigo-400 bg-slate-50/50 hover:bg-indigo-50/30 text-xs sm:text-sm font-semibold transition-all flex items-center space-x-3';
+          btn.innerHTML = `
+            <span class="w-7 h-7 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-bold flex-shrink-0">${String.fromCharCode(65 + idx)}</span>
+            <span class="option-text">${opt}</span>
+          `;
+          btn.addEventListener('click', () => selectAnswer(idx, btn));
+          quizOptionsContainer.appendChild(btn);
+        });
+      }
+
+      if (window.renderMathInElement) {
+        if (quizQuestionText) renderMathInElement(quizQuestionText, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}] });
+        if (quizOptionsContainer) renderMathInElement(quizOptionsContainer, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}] });
+      }
+    }
+
+    function selectAnswer(selectedIdx, btnElement) {
+      if (answeredCurrent) return;
+      answeredCurrent = true;
+      const q = sessionQuestions[currentQuizIndex];
+      const buttons = quizOptionsContainer ? quizOptionsContainer.querySelectorAll('button') : [];
+
+      if (selectedIdx === q.correct) {
+        soundSuccess();
+        quizScore++;
+        if (quizScoreDisplay) quizScoreDisplay.innerText = `${quizScore} / 10`;
+        btnElement.classList.remove('border-slate-200', 'bg-slate-50/50');
+        btnElement.classList.add('border-emerald-500', 'bg-emerald-50', 'text-emerald-900');
+        if (quizFeedback) {
+          quizFeedback.className = 'mt-6 p-4 rounded-2xl text-xs sm:text-sm font-semibold border border-emerald-200 bg-emerald-50 text-emerald-800';
+          quizFeedback.innerHTML = `✅ ${q.feedback}`;
+        }
+      } else {
+        playTone(220, 'sawtooth', 0.25);
+        btnElement.classList.remove('border-slate-200', 'bg-slate-50/50');
+        btnElement.classList.add('border-rose-400', 'bg-rose-50', 'text-rose-900');
+        if (buttons[q.correct]) {
+          buttons[q.correct].classList.remove('border-slate-200');
+          buttons[q.correct].classList.add('border-emerald-500', 'bg-emerald-50');
+        }
+        if (quizFeedback) {
+          quizFeedback.className = 'mt-6 p-4 rounded-2xl text-xs sm:text-sm font-semibold border border-rose-200 bg-rose-50 text-rose-800';
+          quizFeedback.innerHTML = `❌ <strong>Not quite.</strong> ${q.feedback}`;
+        }
+      }
+
+      if (quizFeedback) quizFeedback.classList.remove('hidden');
+      if (quizNextBtn) quizNextBtn.classList.remove('hidden');
+      if (quizHintBtn) quizHintBtn.classList.add('hidden');
+
+      if (window.renderMathInElement && quizFeedback) {
+        renderMathInElement(quizFeedback, {
+          delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}]
+        });
+      }
+    }
+
+    if (quizHintBtn) {
+      quizHintBtn.addEventListener('click', () => {
+        soundClick();
+        const q = sessionQuestions[currentQuizIndex];
+        if (q) showToast(`💡 Hint: ${q.hint}`);
+      });
+    }
+
+    if (quizNextBtn) {
+      quizNextBtn.addEventListener('click', () => {
+        soundClick();
+        currentQuizIndex++;
+        if (currentQuizIndex < 10) {
+          loadQuizQuestion();
+        } else {
+          if (quizCard) quizCard.classList.add('hidden');
+          if (completionBanner) completionBanner.classList.remove('hidden');
+          const summ = document.getElementById('completion-summary');
+          if (summ) summ.innerText = `You scored ${quizScore} out of 10 on your randomized calculus assessment!`;
+          const codeNum = Math.floor(1000 + Math.random() * 9000);
+          const vCode = document.getElementById('student-verification-code');
+          if (vCode) vCode.innerText = `Verified ID: CALC-PASS-${codeNum}`;
+          soundSuccess();
+          const pBar = document.getElementById('overall-progress-bar');
+          const pText = document.getElementById('overall-progress-text');
+          if (pBar) pBar.style.width = '100%';
+          if (pText) pText.innerText = '100%';
+        }
+      });
+    }
+
+    function restartQuiz() {
+      soundClick();
+      initializeRandomizedSession();
+      if (completionBanner) completionBanner.classList.add('hidden');
+      if (quizCard) quizCard.classList.remove('hidden');
+      loadQuizQuestion();
+      showToast("🎲 Generated 10 fresh randomized questions!");
+    }
+
+    /* ========================================================
+       WINDOW INITIALIZATION & RESIZE LISTENERS
+       ======================================================== */
+    window.onload = function() {
+      // 1. Initialize Section 1 Secant Canvas
+      renderSecantCanvas();
+
+      // 2. Initialize Section 2 Dropdown and Scrubber
+      initRuleDropdown();
+      updateRuleStep();
+
+      // 3. Initialize Section 3 Slope Tracer
+      renderTopCanvas();
+      renderBottomCanvas();
+
+      // 4. Initialize Section 4 Optimization
+      renderOptimizationCanvases();
+      updateOptimizationMath();
+
+      // 5. Initialize Section 5 Assessment
+      initializeRandomizedSession();
+      loadQuizQuestion();
+
+      // Render math formulas on load
+      if (window.renderMathInElement) {
+        renderMathInElement(document.body, {
+          delimiters: [
+            {left: "$$", right: "$$", display: true},
+            {left: "$", right: "$", display: false}
+          ]
+        });
+      }
+
+      // Handle window resizing smoothly
+      window.addEventListener('resize', () => {
+        renderSecantCanvas();
+        renderRuleCanvas();
+        renderTopCanvas();
+        renderBottomCanvas();
+        renderOptimizationCanvases();
+      });
+    };
+  </script>
+</body>
+</html>

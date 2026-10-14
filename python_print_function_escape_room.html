@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PROJECT CYBERLOCK // SMTP Intercept</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Share Tech Mono & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  
+  <style>
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background-color: #060a0a;
+      color: #33ff77;
+    }
+    .font-terminal {
+      font-family: 'Share Tech Mono', monospace;
+    }
+    /* CRT Scanline Overlay */
+    .scanlines {
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.35) 50%
+      ), linear-gradient(
+        90deg,
+        rgba(255, 0, 0, 0.03),
+        rgba(0, 255, 0, 0.01),
+        rgba(0, 0, 255, 0.03)
+      );
+      background-size: 100% 3px, 3px 100%;
+      pointer-events: none;
+    }
+    /* CRT subtle flicker */
+    @keyframes screenFlicker {
+      0% { opacity: 0.985; }
+      50% { opacity: 1; }
+      100% { opacity: 0.99; }
+    }
+    .crt-screen {
+      animation: screenFlicker 0.15s infinite;
+      box-shadow: 0 0 45px rgba(16, 185, 129, 0.12) inset, 0 0 25px rgba(16, 185, 129, 0.15);
+    }
+    /* Terminal Glow */
+    .text-glow-green {
+      text-shadow: 0 0 8px rgba(51, 255, 119, 0.65), 0 0 16px rgba(51, 255, 119, 0.35);
+    }
+    .text-glow-red {
+      text-shadow: 0 0 8px rgba(239, 68, 68, 0.75), 0 0 16px rgba(239, 68, 68, 0.4);
+    }
+    .text-glow-cyan {
+      text-shadow: 0 0 8px rgba(34, 211, 238, 0.75), 0 0 16px rgba(34, 211, 238, 0.4);
+    }
+    .border-glow {
+      box-shadow: 0 0 15px rgba(51, 255, 119, 0.2);
+    }
+    /* Blinking Cursor */
+    @keyframes blink {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    .cursor-blink {
+      animation: blink 1s infinite;
+    }
+    /* Shake animation for penalty */
+    @keyframes penaltyShake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-8px); }
+      40% { transform: translateX(8px); }
+      60% { transform: translateX(-6px); }
+      80% { transform: translateX(6px); }
+    }
+    .shake {
+      animation: penaltyShake 0.45s ease-in-out;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b1414;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #14532d;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #22c55e;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#040808] text-[#39ff82] flex flex-col relative selection:bg-[#15803d] selection:text-black">
+  <div class="fixed inset-0 scanlines z-30 pointer-events-none"></div>
+
+  <!-- Audio Synthesizer Toggle & Mission Header -->
+  <header class="border-b border-[#166534] bg-[#07110f]/90 backdrop-blur sticky top-0 z-20 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+      <span class="font-terminal tracking-wider text-white font-bold text-base sm:text-lg">
+        SMTP-DEFENSE <span class="text-[#22c55e] text-xs font-normal">v4.09.2</span>
+      </span>
+      <span class="hidden md:inline-block px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-800 text-[11px] font-mono tracking-wide animate-pulse">
+        UNAUTHORIZED OUTBOUND BROADCAST IN PROGRESS
+      </span>
+    </div>
+
+    <!-- Right utility controls -->
+    <div class="flex items-center gap-4">
+      <button id="soundToggleBtn" class="px-2.5 py-1 rounded bg-[#0d221c] hover:bg-[#13332a] border border-[#22c55e]/40 text-[#4ade80] flex items-center gap-1.5 transition-colors">
+        <span id="soundIcon">🔊</span>
+        <span id="soundText" class="font-mono text-xs">AUDIO: ON</span>
+      </button>
+      <button id="guideBtn" class="px-2.5 py-1 rounded bg-[#0d221c] hover:bg-[#13332a] border border-[#22c55e]/40 text-[#4ade80] font-mono text-xs flex items-center gap-1">
+        <span>📖</span> CHEAT SHEET
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-6xl w-full mx-auto p-3 sm:p-5 flex flex-col gap-4 relative z-10">
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <!-- Countdown Timer Box -->
+      <div id="timerCard" class="bg-[#081512] border-2 border-[#15803d] rounded-lg p-3 sm:p-4 flex flex-col justify-between shadow-lg relative overflow-hidden transition-all duration-300">
+        <div class="flex justify-between items-center text-xs font-mono text-emerald-400 mb-1">
+          <span class="flex items-center gap-1">⏱️ OUTBOX UPLINK WINDOW</span>
+          <span id="penaltyBadge" class="hidden text-red-400 font-bold tracking-widest bg-red-950/80 px-1.5 py-0.5 rounded border border-red-700 animate-bounce">-1 MINUTE!</span>
+        </div>
+        <div class="flex items-baseline justify-between mt-1">
+          <div id="timerDisplay" class="text-3xl sm:text-4xl font-extrabold font-terminal tracking-wider text-glow-green text-emerald-300">
+            20:00
+          </div>
+          <div class="text-right font-mono text-[11px] text-zinc-400">
+            <div>PENALTY: <span class="text-red-400">-1:00</span> / WRONG</div>
+            <div id="strikeCount" class="text-amber-400">FAILS: 0</div>
+          </div>
+        </div>
+        <div class="w-full bg-zinc-900 h-2 rounded-full mt-2.5 overflow-hidden border border-zinc-800">
+          <div id="timerBar" class="bg-emerald-500 h-full w-full transition-all duration-1000 ease-linear"></div>
+        </div>
+      </div>
+
+      <!-- Transmission Buffer Status -->
+      <div class="bg-[#081512] border-2 border-red-900/80 rounded-lg p-3 sm:p-4 flex flex-col justify-between shadow-lg">
+        <div class="flex justify-between items-center text-xs font-mono text-red-400 mb-1">
+          <span>🚨 ROGUE EMAIL BROADCAST BUFFER</span>
+          <span class="text-[10px] text-zinc-400 font-mono">ENCRYPTION: 1024-BIT</span>
+        </div>
+        <div>
+          <div class="flex justify-between text-xs text-zinc-300 mb-1 font-mono">
+            <span class="truncate">SUBJECT: <span class="text-red-300">"LEAK_CEO_CREDENTIALS.ZIP"</span></span>
+            <span id="transmissionPct" class="font-bold text-red-400">0%</span>
+          </div>
+          <div class="w-full bg-zinc-900 h-2.5 rounded-full overflow-hidden border border-red-950">
+            <div id="transmissionBar" class="bg-gradient-to-r from-yellow-500 to-red-500 h-full w-[0%] transition-all duration-500"></div>
+          </div>
+        </div>
+        <div class="text-[11px] text-zinc-400 font-mono mt-2 flex justify-between">
+          <span>DESTINATION: <span class="text-zinc-200">unknown@darkweb.cc</span></span>
+          <span id="targetStatus" class="text-yellow-400 font-semibold animate-pulse">TRANSMITTING...</span>
+        </div>
+      </div>
+
+      <!-- Progress Matrix (Nodes 1 to 10) -->
+      <div class="bg-[#081512] border-2 border-[#15803d] rounded-lg p-3 sm:p-4 flex flex-col justify-between">
+        <div class="flex justify-between items-center text-xs font-mono text-emerald-400 mb-1">
+          <span>🛡️ OVERRIDE FIREWALL LOCKS</span>
+          <span id="stepCounter" class="font-bold text-white">LOCK 1 / 10</span>
+        </div>
+        <!-- 10 Step Indicators -->
+        <div class="grid grid-cols-5 gap-1.5 my-1" id="stepGrid">
+          <!-- Dynamically populated 10 buttons -->
+        </div>
+        <div class="text-[11px] text-emerald-300/80 font-mono flex items-center justify-between">
+          <span>STATUS: <span id="firewallStatusText" class="text-emerald-400 font-bold">BYPASSING PROTOCOL</span></span>
+          <span id="clearedCount" class="text-xs text-emerald-500 font-mono">0/10 CLEARED</span>
+        </div>
+      </div>
+    </section>
+
+    <div id="gameplayWorkspace" class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4">
+      
+      <!-- Left Column: Hacker Mission Briefing & Python Sandbox Preview (7 cols) -->
+      <section class="lg:col-span-7 flex flex-col gap-4">
+        <!-- Terminal Card -->
+        <div class="crt-screen bg-[#071310] border-2 border-[#166534] rounded-lg p-4 sm:p-5 flex-1 flex flex-col shadow-2xl relative">
+          <!-- Terminal Header Bar -->
+          <div class="flex items-center justify-between border-b border-[#14532d] pb-2 mb-3 text-xs font-mono">
+            <div class="flex items-center gap-2">
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-red-500/80"></span>
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-yellow-500/80"></span>
+              <span class="inline-block w-2.5 h-2.5 rounded-full bg-green-500/80"></span>
+              <span class="text-zinc-400 ml-2 font-terminal">TERMINAL: /dev/smtp_interceptor.py</span>
+            </div>
+            <div class="text-emerald-400 font-mono text-[11px]">
+              PYTHON 3.12 INTERPRETER
+            </div>
+          </div>
+
+          <!-- Mission Story Note -->
+          <div class="bg-[#040e0b] border border-[#14532d] rounded p-3 mb-4 text-xs sm:text-sm text-zinc-300 font-mono leading-relaxed">
+            <p id="missionBriefing">
+              <span class="text-emerald-400 font-bold">[INTERCEPT INTEL]:</span> A rogue script is routing the transmission queue. To sever connection node <span id="briefingNodeNum" class="text-white font-bold underline">#1</span>, determine what exact output is emitted to the standard console when the following Python code executes!
+            </p>
+          </div>
+
+          <!-- Python Code Display Frame -->
+          <div class="relative bg-[#030907] border-2 border-[#22c55e]/50 rounded-lg p-4 font-mono text-sm sm:text-base shadow-inner overflow-x-auto">
+            <div class="absolute top-2 right-3 text-[10px] tracking-widest text-emerald-500/60 uppercase">Code Buffer</div>
+            <pre id="pythonCodeSnippet" class="text-emerald-300 leading-relaxed font-bold font-terminal"></pre>
+          </div>
+
+          <!-- Question Objective & Concept Tip -->
+          <div class="mt-4 flex flex-col gap-2">
+            <div class="text-xs sm:text-sm font-bold text-yellow-300 flex items-center gap-2">
+              <span class="text-lg">🎯</span>
+              <span id="questionPrompt">What is the exact console output of this Python print statement?</span>
+            </div>
+            <div class="text-xs text-zinc-400 bg-zinc-950/60 p-2.5 rounded border border-zinc-800 flex justify-between items-center">
+              <span id="conceptExplanation">💡 <strong class="text-emerald-300">Hint Concept:</strong> Standard text printing inside quotes.</span>
+              <button id="showHintBtn" class="text-[11px] bg-emerald-950 hover:bg-emerald-900 border border-emerald-700 text-emerald-300 px-2 py-0.5 rounded transition">
+                Need Hint?
+              </button>
+            </div>
+            <div id="hintBox" class="hidden text-xs text-yellow-200/90 bg-yellow-950/40 p-2 rounded border border-yellow-800 font-mono">
+              <!-- Dynamically populated hint -->
+            </div>
+          </div>
+
+          <!-- Input Submission Section -->
+          <div class="mt-5 pt-3 border-t border-[#14532d]">
+            <form id="submissionForm" class="flex flex-col sm:flex-row gap-2">
+              <div class="flex-1 relative flex items-center">
+                <span class="absolute left-3 text-emerald-500 font-bold font-mono select-none">&gt;&gt;&gt;</span>
+                <input 
+                  type="text" 
+                  id="userAnswerInput" 
+                  autocomplete="off" 
+                  spellcheck="false"
+                  placeholder="Type exact output here (do not type quotes)..."
+                  class="w-full bg-[#020705] border-2 border-emerald-600 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 rounded-lg pl-12 pr-4 py-2.5 text-sm sm:text-base font-mono text-white placeholder-zinc-600 outline-none transition"
+                >
+              </div>
+              <button 
+                type="submit" 
+                id="submitBtn"
+                class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-black font-extrabold rounded-lg font-mono text-sm tracking-wider flex items-center justify-center gap-2 transition active:scale-95 shadow-md hover:shadow-emerald-500/20 cursor-pointer"
+              >
+                <span>OVERRIDE</span>
+                <span>↵</span>
+              </button>
+            </form>
+            <p class="text-[11px] text-zinc-400 mt-2 font-mono flex items-center gap-1">
+              <span>⚠️</span>
+              <span><strong>Rule:</strong> Incorrect responses incur an immediate <span class="text-red-400 font-bold">-1 minute countdown penalty</span>!</span>
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Live Intercept Email Monitor & Security Terminal Logs (5 cols) -->
+      <section class="lg:col-span-5 flex flex-col gap-4">
+        
+        <!-- Email Payload Monitor -->
+        <div class="bg-[#081512] border-2 border-red-950 rounded-lg p-3 sm:p-4 text-xs font-mono flex flex-col">
+          <div class="flex items-center justify-between border-b border-red-900/50 pb-2 mb-2">
+            <span class="text-red-400 font-bold flex items-center gap-1.5">
+              <span class="inline-block w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+              ROGUE SMTP OUTBOUND PACKET
+            </span>
+            <span class="text-zinc-500 text-[10px]">PORT 587 (TLS)</span>
+          </div>
+          <div class="bg-black/60 p-2.5 rounded border border-zinc-800 text-[11px] space-y-1 text-zinc-300">
+            <div><span class="text-zinc-500">FROM:</span> internal-admin@company-hq.org</div>
+            <div><span class="text-zinc-500">TO:</span> dark-broker-syndicate@onion-drop.cc</div>
+            <div><span class="text-zinc-500">PAYLOAD:</span> <span class="text-yellow-400">top_secret_database_dump.enc.aes</span></div>
+            <div><span class="text-zinc-500">SIZE:</span> 4.82 GB <span class="text-red-400">(STREAMING NOW)</span></div>
+          </div>
+        </div>
+
+        <!-- Terminal Console Live Logs -->
+        <div class="bg-[#030907] border-2 border-[#166534] rounded-lg p-3 sm:p-4 flex-1 flex flex-col font-mono text-xs shadow-inner min-h-[220px]">
+          <div class="flex items-center justify-between border-b border-[#14532d] pb-2 mb-2 text-zinc-400">
+            <span class="text-emerald-400 font-bold">SYSTEM AUDIT TRAIL</span>
+            <span class="text-[10px] text-zinc-500">LIVE FEED</span>
+          </div>
+          
+          <div id="terminalLogBox" class="flex-1 overflow-y-auto space-y-1.5 pr-1 max-h-56 sm:max-h-72">
+            <!-- Log entries injected here -->
+          </div>
+
+          <!-- Quick Interactive Help bar -->
+          <div class="border-t border-[#14532d] pt-2 mt-2 flex items-center justify-between text-[11px] text-zinc-500">
+            <span>Terminal: Active</span>
+            <span class="text-emerald-500/80 cursor-pointer hover:underline" id="clearLogBtn">Clear Log</span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- WIN / SUCCESS MODAL SCREEN -->
+    <div id="winModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+      <div class="max-w-xl w-full bg-[#05140f] border-4 border-emerald-400 rounded-xl p-6 sm:p-8 text-center font-mono shadow-[0_0_80px_rgba(52,211,153,0.4)] relative">
+        <div class="w-16 h-16 bg-emerald-500/20 border-2 border-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl animate-bounce">
+          🛡️
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-terminal font-extrabold text-white text-glow-green mb-2">
+          TRANSMISSION ABORTED!
+        </h2>
+        <p class="text-emerald-300 font-bold tracking-wider text-sm mb-4">
+          EMAIL SUCCESSFULLY PURGED FROM OUTBOUND QUEUE
+        </p>
+        <div class="bg-black/60 border border-emerald-900 rounded-lg p-4 text-left text-xs sm:text-sm text-zinc-300 space-y-2 mb-6">
+          <p>✔️ <span class="text-emerald-400">10 of 10 firewall locks</span> cracked with precision Python syntax.</p>
+          <p>✔️ All outgoing SMTP packets safely scrambled and blocked.</p>
+          <p>✔️ Time Remaining: <span id="finalTimeRemaining" class="text-white font-bold text-base"></span></p>
+          <p>✔️ Penalty Strikes Taken: <span id="finalStrikes" class="text-yellow-400 font-bold"></span></p>
+        </div>
+        <p class="text-xs text-zinc-400 mb-6 italic">
+          "Outstanding work, Agent! You have demonstrated mastery of string literals, multiple print arguments, separator formatting, math operations, and custom end parameters."
+        </p>
+        <button id="playAgainWinBtn" class="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-base rounded-lg transition active:scale-95 shadow-lg shadow-emerald-500/30">
+          RE-ENGAGE SYSTEM (PLAY AGAIN)
+        </button>
+      </div>
+    </div>
+
+    <!-- GAME OVER / TIMEOUT MODAL -->
+    <div id="gameOverModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+      <div class="max-w-xl w-full bg-[#170505] border-4 border-red-500 rounded-xl p-6 sm:p-8 text-center font-mono shadow-[0_0_80px_rgba(239,68,68,0.5)]">
+        <div class="w-16 h-16 bg-red-500/20 border-2 border-red-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl animate-pulse">
+          ☠️
+        </div>
+        <h2 class="text-2xl sm:text-3xl font-terminal font-extrabold text-red-500 text-glow-red mb-2">
+          BREACH CRITICAL: EMAIL TRANSMITTED!
+        </h2>
+        <p class="text-red-300 text-sm mb-4">
+          The timer expired before the final print statement lock could be decoded.
+        </p>
+        <div class="bg-black/70 border border-red-900/60 rounded-lg p-4 text-left text-xs text-zinc-300 space-y-1.5 mb-6">
+          <p class="text-red-400 font-bold">Post-Incident Report:</p>
+          <p>• Data packets uploaded to rogue destination server.</p>
+          <p>• Solved Locks: <span id="failLocksSolved" class="text-white font-bold">0 / 10</span></p>
+          <p>• Tip: Remember that wrong answers strip away 60 vital seconds!</p>
+        </div>
+        <button id="retryGameOverBtn" class="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-extrabold text-base rounded-lg transition active:scale-95 shadow-lg shadow-red-600/30">
+          SYSTEM REBOOT & RETRY
+        </button>
+      </div>
+    </div>
+
+    <!-- CHEAT SHEET MODAL -->
+    <div id="cheatSheetModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div class="max-w-lg w-full bg-[#05110d] border-2 border-emerald-500 rounded-xl p-5 font-mono text-xs shadow-2xl relative">
+        <div class="flex justify-between items-center border-b border-emerald-800 pb-2 mb-3">
+          <span class="text-emerald-300 font-bold text-sm">🐍 PYTHON PRINT() SURVIVAL GUIDE</span>
+          <button id="closeCheatSheetBtn" class="text-zinc-400 hover:text-white text-lg font-bold px-1">✕</button>
+        </div>
+        <div class="space-y-3 text-zinc-300 max-h-[70vh] overflow-y-auto pr-1">
+          <div class="bg-black/50 p-2.5 rounded border border-emerald-950">
+            <span class="text-emerald-400 font-bold">1. Strings & Quotes:</span>
+            <p class="text-zinc-400 mt-1"><code>print("Hello")</code> displays <code>Hello</code>. Notice the quotation marks are not printed!</p>
+          </div>
+          <div class="bg-black/50 p-2.5 rounded border border-emerald-950">
+            <span class="text-emerald-400 font-bold">2. Concatenation (+):</span>
+            <p class="text-zinc-400 mt-1"><code>print("Cat" + "Fish")</code> joins them directly without spaces: <code>CatFish</code>.</p>
+          </div>
+          <div class="bg-black/50 p-2.5 rounded border border-emerald-950">
+            <span class="text-emerald-400 font-bold">3. Comma Separation (,):</span>
+            <p class="text-zinc-400 mt-1"><code>print("Code", 42)</code> inserts an automatic space: <code>Code 42</code>.</p>
+          </div>
+          <div class="bg-black/50 p-2.5 rounded border border-emerald-950">
+            <span class="text-emerald-400 font-bold">4. Custom Separator (sep=):</span>
+            <p class="text-zinc-400 mt-1"><code>print("A", "B", sep="-")</code> changes the glue: <code>A-B</code>.</p>
+          </div>
+          <div class="bg-black/50 p-2.5 rounded border border-emerald-950">
+            <span class="text-emerald-400 font-bold">5. Custom End (end=):</span>
+            <p class="text-zinc-400 mt-1">By default print moves to a new line. <code>end="!"</code> appends ! instead of jumping down.</p>
+          </div>
+        </div>
+        <button id="ackCheatSheetBtn" class="w-full mt-4 py-2 bg-emerald-800 hover:bg-emerald-700 text-white rounded font-bold">
+          RETURN TO CONSOLE
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    /* =========================================================
+       AUDIO SYNTHESIZER (Native Web Audio API - Zero External URLs)
+       ========================================================= */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      playTone(freq, type = 'sine', duration = 0.1, gainVal = 0.1) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch(e) {
+          // Audio fallback gracefully
+        }
+      }
+
+      beep() {
+        this.playTone(880, 'square', 0.05, 0.04);
+      }
+
+      success() {
+        if (!this.enabled) return;
+        this.playTone(523.25, 'triangle', 0.1, 0.12); // C5
+        setTimeout(() => this.playTone(659.25, 'triangle', 0.12, 0.12), 90); // E5
+        setTimeout(() => this.playTone(783.99, 'triangle', 0.22, 0.15), 180); // G5
+      }
+
+      alarm() {
+        if (!this.enabled) return;
+        this.playTone(220, 'sawtooth', 0.25, 0.15);
+        setTimeout(() => this.playTone(180, 'sawtooth', 0.35, 0.15), 120);
+      }
+
+      victory() {
+        if (!this.enabled) return;
+        const notes = [440, 554.37, 659.25, 880];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => this.playTone(freq, 'sine', 0.25, 0.15), idx * 140);
+        });
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    /* =========================================================
+       10 STEP ESCAPE ROOM PUZZLE DEFINITIONS
+       Each step focuses clearly on Python print() principles.
+       ========================================================= */
+    const PUZZLES = [
+      {
+        step: 1,
+        title: "LOCK 01: RAW STRING LITERAL",
+        code: `# NODE 1: Authentication Beacon
+print("DEFENSE")`,
+        prompt: "What exact string prints to the terminal console?",
+        concept: "The print() function outputs the text inside the quotation marks without the quotes themselves.",
+        hint: "Type just the letters inside the quotes. Do not include quotes in your answer!",
+        validAnswers: ["DEFENSE"]
+      },
+      {
+        step: 2,
+        title: "LOCK 02: STRING CONCATENATION (+)",
+        code: `# NODE 2: Severing Uplink Cable
+print("KILL" + "SWITCH")`,
+        prompt: "What exact text is produced when strings are added together with '+'?",
+        concept: "The '+' operator between strings glues (concatenates) them directly with NO added spaces.",
+        hint: "Combine the two words into one unbroken word without spaces.",
+        validAnswers: ["KILLSWITCH"]
+      },
+      {
+        step: 3,
+        title: "LOCK 03: NUMERIC ARITHMETIC EVALUATION",
+        code: `# NODE 3: Frequency Override
+print(40 + 2)`,
+        prompt: "What value does Python output when printing a math calculation?",
+        concept: "Numbers without quotation marks are evaluated mathematically before printing.",
+        hint: "Add 40 plus 2 together. What is the sum?",
+        validAnswers: ["42"]
+      },
+      {
+        step: 4,
+        title: "LOCK 04: MULTIPLE COMMA ARGUMENTS",
+        code: `# NODE 4: Routing Port Allocation
+print("FIREWALL", 500)`,
+        prompt: "What exact output is displayed when arguments are separated by a comma?",
+        concept: "In Python, passing multiple arguments with commas automatically inserts a single space between them.",
+        hint: "Notice the single space Python adds between FIREWALL and 500.",
+        validAnswers: ["FIREWALL 500"]
+      },
+      {
+        step: 5,
+        title: "LOCK 05: THE SEPARATOR PARAMETER (sep=)",
+        code: `# NODE 5: Subnet Gateway Protocol
+print("ROOT", "ACCESS", sep="-")`,
+        prompt: "What is printed when the 'sep' parameter is set to '-'?",
+        concept: "The 'sep' parameter replaces the default space between arguments with whatever string you provide.",
+        hint: "Instead of a space between ROOT and ACCESS, use the hyphen (-).",
+        validAnswers: ["ROOT-ACCESS"]
+      },
+      {
+        step: 6,
+        title: "LOCK 06: MULTI-TOKEN IP GENERATOR",
+        code: `# NODE 6: Gateway Mask IP
+print("IP", "192", "168", sep=".")`,
+        prompt: "What exact sequence is output with sep='.' between all three tokens?",
+        concept: "Every comma in the print call is replaced by the separator dot (.).",
+        hint: "Join IP, 192, and 168 with period dots in between.",
+        validAnswers: ["IP.192.168"]
+      },
+      {
+        step: 7,
+        title: "LOCK 07: CUSTOM END PARAMETER (end=)",
+        code: `# NODE 7: Packet Stream Override
+print("HACK", end="!")
+print("STOP")`,
+        prompt: "What single string appears on the console when end='!' suppresses the newline?",
+        concept: "By default, print() ends with a newline '\\n'. Setting end='!' attaches '!' and keeps the next print on the same line!",
+        hint: "The first line prints HACK and !. The second line attaches STOP immediately after it.",
+        validAnswers: ["HACK!STOP"]
+      },
+      {
+        step: 8,
+        title: "LOCK 08: ESCAPE CHARACTERS (\\\")",
+        code: `# NODE 8: Encrypted Header Token
+print("CODE:\"OVERRIDE\"")`,
+        prompt: "What exact text prints when backslashes escape internal quotation marks?",
+        concept: "The backslash \\\" allows quotation marks to be printed as part of the string output.",
+        hint: "The inner quotation marks around OVERRIDE will actually be displayed in this output: CODE:\"OVERRIDE\"",
+        validAnswers: ['CODE:"OVERRIDE"']
+      },
+      {
+        step: 9,
+        title: "LOCK 09: MIXED ARITHMETIC & SEPARATORS",
+        code: `# NODE 9: Transmission Packet Formula
+print("PACKET", 3 * 3, sep="#")`,
+        prompt: "What exact text is printed when math (3 * 3) is combined with sep='#'?",
+        concept: "Python evaluates arithmetic (3 * 3 = 9) first, then applies the separator '#'.",
+        hint: "Calculate 3 times 3 first, then connect PACKET and that number with #.",
+        validAnswers: ["PACKET#9"]
+      },
+      {
+        step: 10,
+        title: "LOCK 10: THE FINAL MASTER KILL-SWITCH",
+        code: `# FINAL NODE 10: PERMANENT SMTP ABORT SEQUENCE
+print("ABORT", "TRANSMISSION", sep="_", end="!!!")`,
+        prompt: "Calculate the exact abort command output to execute the permanent shutdown!",
+        concept: "Combines both custom separator (sep='_') and custom terminator (end='!!!').",
+        hint: "Put an underscore between ABORT and TRANSMISSION, and finish with three exclamation marks (!!!).",
+        validAnswers: ["ABORT_TRANSMISSION!!!"]
+      }
+    ];
+
+    /* =========================================================
+       STREAMING_CHUNK:Configuring state management and DOM elements...
+       ========================================================= */
+    const TOTAL_SECONDS = 20 * 60; // 20 minutes = 1200s
+    let state = {
+      currentStepIndex: 0,
+      secondsRemaining: TOTAL_SECONDS,
+      strikes: 0,
+      timerId: null,
+      isGameOver: false,
+      isVictory: false
+    };
+
+    // DOM References
+    const timerDisplay = document.getElementById('timerDisplay');
+    const timerBar = document.getElementById('timerBar');
+    const timerCard = document.getElementById('timerCard');
+    const penaltyBadge = document.getElementById('penaltyBadge');
+    const strikeCount = document.getElementById('strikeCount');
+    const transmissionBar = document.getElementById('transmissionBar');
+    const transmissionPct = document.getElementById('transmissionPct');
+    const stepGrid = document.getElementById('stepGrid');
+    const stepCounter = document.getElementById('stepCounter');
+    const clearedCount = document.getElementById('clearedCount');
+    const briefingNodeNum = document.getElementById('briefingNodeNum');
+    const pythonCodeSnippet = document.getElementById('pythonCodeSnippet');
+    const questionPrompt = document.getElementById('questionPrompt');
+    const conceptExplanation = document.getElementById('conceptExplanation');
+    const hintBox = document.getElementById('hintBox');
+    const showHintBtn = document.getElementById('showHintBtn');
+    const userAnswerInput = document.getElementById('userAnswerInput');
+    const submissionForm = document.getElementById('submissionForm');
+    const terminalLogBox = document.getElementById('terminalLogBox');
+    const winModal = document.getElementById('winModal');
+    const gameOverModal = document.getElementById('gameOverModal');
+    const cheatSheetModal = document.getElementById('cheatSheetModal');
+    const guideBtn = document.getElementById('guideBtn');
+    const closeCheatSheetBtn = document.getElementById('closeCheatSheetBtn');
+    const ackCheatSheetBtn = document.getElementById('ackCheatSheetBtn');
+    const soundToggleBtn = document.getElementById('soundToggleBtn');
+    const soundText = document.getElementById('soundText');
+    const clearLogBtn = document.getElementById('clearLogBtn');
+    const playAgainWinBtn = document.getElementById('playAgainWinBtn');
+    const retryGameOverBtn = document.getElementById('retryGameOverBtn');
+    const finalTimeRemaining = document.getElementById('finalTimeRemaining');
+    const finalStrikes = document.getElementById('finalStrikes');
+    const failLocksSolved = document.getElementById('failLocksSolved');
+
+    function addLog(message, type = 'info') {
+      const line = document.createElement('div');
+      const timeStr = new Date().toLocaleTimeString([], { hour12: false });
+      
+      let colorClass = 'text-zinc-400';
+      let icon = 'ℹ️';
+
+      if (type === 'success') {
+        colorClass = 'text-emerald-400 font-bold';
+        icon = '🔓';
+      } else if (type === 'danger') {
+        colorClass = 'text-red-400 font-bold';
+        icon = '❌';
+      } else if (type === 'warn') {
+        colorClass = 'text-yellow-400';
+        icon = '⚠️';
+      } else if (type === 'cyan') {
+        colorClass = 'text-cyan-400';
+        icon = '📡';
+      }
+
+      line.className = `${colorClass} flex items-start gap-1.5 py-0.5 leading-snug`;
+      line.innerHTML = `<span class="text-zinc-600 select-none">[${timeStr}]</span> <span>${icon}</span> <span>${message}</span>`;
+      terminalLogBox.appendChild(line);
+      terminalLogBox.scrollTop = terminalLogBox.scrollHeight;
+    }
+
+    function formatTime(totalSeconds) {
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function buildStepGrid() {
+      stepGrid.innerHTML = '';
+      PUZZLES.forEach((p, idx) => {
+        const node = document.createElement('div');
+        node.id = `step-node-${idx}`;
+        node.className = `py-1 text-center font-mono text-[11px] rounded border transition-all ${
+          idx === 0 
+            ? 'bg-emerald-950/80 border-emerald-400 text-emerald-300 font-bold animate-pulse' 
+            : 'bg-zinc-950/50 border-zinc-800 text-zinc-600'
+        }`;
+        node.textContent = `L${idx + 1}`;
+        stepGrid.appendChild(node);
+      });
+    }
+
+    function updateStepGrid() {
+      PUZZLES.forEach((p, idx) => {
+        const node = document.getElementById(`step-node-${idx}`);
+        if (!node) return;
+        if (idx < state.currentStepIndex) {
+          // Completed
+          node.className = 'py-1 text-center font-mono text-[11px] rounded border bg-emerald-900/60 border-emerald-500 text-emerald-400 font-bold';
+          node.textContent = `✓ L${idx + 1}`;
+        } else if (idx === state.currentStepIndex) {
+          // Active
+          node.className = 'py-1 text-center font-mono text-[11px] rounded border bg-emerald-500 border-white text-black font-extrabold shadow-sm animate-pulse';
+          node.textContent = `L${idx + 1}`;
+        } else {
+          // Locked
+          node.className = 'py-1 text-center font-mono text-[11px] rounded border bg-zinc-950/40 border-zinc-800 text-zinc-600';
+          node.textContent = `L${idx + 1}`;
+        }
+      });
+
+      stepCounter.textContent = `LOCK ${state.currentStepIndex + 1} / 10`;
+      clearedCount.textContent = `${state.currentStepIndex}/10 CLEARED`;
+      
+      // Calculate buffer transmission urgency
+      // As steps are solved, we push back the buffer transmission!
+      const remainingProgress = (state.currentStepIndex / PUZZLES.length) * 100;
+      // Also factor time into transmission percent
+      const timeElapsed = TOTAL_SECONDS - state.secondsRemaining;
+      const timePercent = (timeElapsed / TOTAL_SECONDS) * 100;
+      
+      // Transmission progress formula: high when time is running low, decreased by cleared steps
+      let threatLevel = Math.max(0, Math.min(99, Math.round(timePercent * 0.9 - (state.currentStepIndex * 6))));
+      if (threatLevel < 0) threatLevel = 0;
+      
+      transmissionBar.style.width = `${threatLevel}%`;
+      transmissionPct.textContent = `${threatLevel}%`;
+    }
+
+    function loadPuzzle(index) {
+      const puzzle = PUZZLES[index];
+      if (!puzzle) return;
+
+      briefingNodeNum.textContent = `#${puzzle.step}`;
+      pythonCodeSnippet.textContent = puzzle.code;
+      questionPrompt.textContent = puzzle.prompt;
+      conceptExplanation.innerHTML = `💡 <strong class="text-emerald-300">Focus:</strong> ${puzzle.concept}`;
+      hintBox.textContent = `HINT: ${puzzle.hint}`;
+      hintBox.classList.add('hidden');
+      showHintBtn.textContent = "Need Hint?";
+      
+      userAnswerInput.value = '';
+      userAnswerInput.focus();
+
+      updateStepGrid();
+      addLog(`Initiating cryptographic handshake on Node #${puzzle.step} (${puzzle.title}).`, 'cyan');
+    }
+
+    function startTimer() {
+      if (state.timerId) clearInterval(state.timerId);
+
+      state.timerId = setInterval(() => {
+        if (state.isGameOver || state.isVictory) {
+          clearInterval(state.timerId);
+          return;
+        }
+
+        state.secondsRemaining--;
+        renderTimer();
+
+        if (state.secondsRemaining <= 0) {
+          triggerGameOver();
+        }
+      }, 1000);
+    }
+
+    function renderTimer() {
+      const displayStr = formatTime(Math.max(0, state.secondsRemaining));
+      timerDisplay.textContent = displayStr;
+
+      const pct = (state.secondsRemaining / TOTAL_SECONDS) * 100;
+      timerBar.style.width = `${Math.max(0, pct)}%`;
+
+      if (state.secondsRemaining <= 180) { // under 3 minutes
+        timerDisplay.classList.remove('text-emerald-300', 'text-glow-green');
+        timerDisplay.classList.add('text-red-500', 'text-glow-red');
+        timerBar.classList.remove('bg-emerald-500');
+        timerBar.classList.add('bg-red-500');
+      } else if (state.secondsRemaining <= 360) { // under 6 minutes
+        timerDisplay.classList.remove('text-emerald-300', 'text-glow-green');
+        timerDisplay.classList.add('text-yellow-400');
+        timerBar.classList.remove('bg-emerald-500');
+        timerBar.classList.add('bg-yellow-400');
+      } else {
+        timerDisplay.classList.add('text-emerald-300', 'text-glow-green');
+        timerDisplay.classList.remove('text-red-500', 'text-glow-red', 'text-yellow-400');
+        timerBar.classList.add('bg-emerald-500');
+        timerBar.classList.remove('bg-red-500', 'bg-yellow-400');
+      }
+    }
+
+    function applyPenalty() {
+      // 1 minute penalty = 60 seconds
+      state.strikes++;
+      strikeCount.textContent = `FAILS: ${state.strikes}`;
+      state.secondsRemaining = Math.max(0, state.secondsRemaining - 60);
+      renderTimer();
+
+      sound.alarm();
+
+      // Visual flash & shake
+      timerCard.classList.add('shake', 'border-red-500');
+      penaltyBadge.classList.remove('hidden');
+
+      setTimeout(() => {
+        timerCard.classList.remove('shake');
+        penaltyBadge.classList.add('hidden');
+        if (state.secondsRemaining > 180) {
+          timerCard.classList.remove('border-red-500');
+        }
+      }, 1200);
+
+      addLog(`SECURITY ALERT: Incorrect syntax payload submitted! -1 MINUTE DEDUCTION PENALTY applied.`, 'danger');
+
+      if (state.secondsRemaining <= 0) {
+        triggerGameOver();
+      }
+    }
+
+    function checkAnswer(inputVal) {
+      if (state.isGameOver || state.isVictory) return;
+
+      const currentPuzzle = PUZZLES[state.currentStepIndex];
+      const cleanInput = inputVal.trim();
+
+      // Check if student mistakenly enclosed in quotes like "DEFENSE"
+      if (cleanInput.startsWith('"') && cleanInput.endsWith('"')) {
+        addLog(`ADVISORY: Remember that print() outputs raw text without quotes. Don't wrap your answer in quotation marks!`, 'warn');
+      }
+
+      // Check match against accepted values
+      const isCorrect = currentPuzzle.validAnswers.some(ans => ans === cleanInput);
+
+      if (isCorrect) {
+        sound.success();
+        addLog(`LOCK ${state.currentStepIndex + 1} DECRYPTED! Console output match confirmed: [${cleanInput}]`, 'success');
+
+        state.currentStepIndex++;
+
+        if (state.currentStepIndex >= PUZZLES.length) {
+          triggerVictory();
+        } else {
+          loadPuzzle(state.currentStepIndex);
+        }
+      } else {
+        applyPenalty();
+      }
+    }
+
+    function triggerVictory() {
+      state.isVictory = true;
+      clearInterval(state.timerId);
+      sound.victory();
+
+      finalTimeRemaining.textContent = formatTime(state.secondsRemaining);
+      finalStrikes.textContent = state.strikes;
+      winModal.classList.remove('hidden');
+
+      addLog(`ALERT DISARMED: All 10 security locks bypassed! Outbound SMTP transmission aborted.`, 'success');
+    }
+
+    function triggerGameOver() {
+      state.isGameOver = true;
+      clearInterval(state.timerId);
+      sound.alarm();
+
+      failLocksSolved.textContent = `${state.currentStepIndex} / 10 Locks Bypassed`;
+      gameOverModal.classList.remove('hidden');
+
+      addLog(`FATAL ERROR: Time expired. Email payload fully broadcasted to unauthorized server.`, 'danger');
+    }
+
+    function resetGame() {
+      state.currentStepIndex = 0;
+      state.secondsRemaining = TOTAL_SECONDS;
+      state.strikes = 0;
+      state.isGameOver = false;
+      state.isVictory = false;
+
+      strikeCount.textContent = `FAILS: 0`;
+      winModal.classList.add('hidden');
+      gameOverModal.classList.add('hidden');
+
+      terminalLogBox.innerHTML = '';
+      addLog("System restart complete. Interceptor reconnected to port 587.", 'cyan');
+      addLog("Outbound queue armed with unauthorized email payload. Intervene immediately!", 'warn');
+
+      buildStepGrid();
+      loadPuzzle(0);
+      renderTimer();
+      startTimer();
+    }
+
+    submissionForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = userAnswerInput.value;
+      if (!val && val !== "0") {
+        userAnswerInput.focus();
+        return;
+      }
+      checkAnswer(val);
+    });
+
+    userAnswerInput.addEventListener('keydown', () => {
+      sound.beep();
+    });
+
+    showHintBtn.addEventListener('click', () => {
+      if (hintBox.classList.contains('hidden')) {
+        hintBox.classList.remove('hidden');
+        showHintBtn.textContent = "Hide Hint";
+        addLog(`Hint accessed for Lock #${state.currentStepIndex + 1}`, 'warn');
+      } else {
+        hintBox.classList.add('hidden');
+        showHintBtn.textContent = "Need Hint?";
+      }
+    });
+
+    // Sound toggle
+    soundToggleBtn.addEventListener('click', () => {
+      sound.enabled = !sound.enabled;
+      if (sound.enabled) {
+        soundText.textContent = "AUDIO: ON";
+        soundToggleBtn.classList.remove('opacity-60');
+        sound.init();
+        sound.beep();
+      } else {
+        soundText.textContent = "AUDIO: OFF";
+        soundToggleBtn.classList.add('opacity-60');
+      }
+    });
+
+    // Cheat Sheet modal
+    guideBtn.addEventListener('click', () => {
+      cheatSheetModal.classList.remove('hidden');
+    });
+    closeCheatSheetBtn.addEventListener('click', () => {
+      cheatSheetModal.classList.add('hidden');
+    });
+    ackCheatSheetBtn.addEventListener('click', () => {
+      cheatSheetModal.classList.add('hidden');
+    });
+
+    // Clear log button
+    clearLogBtn.addEventListener('click', () => {
+      terminalLogBox.innerHTML = '';
+      addLog("Terminal log buffer purged.", 'cyan');
+    });
+
+    // Play again / retry buttons
+    playAgainWinBtn.addEventListener('click', resetGame);
+    retryGameOverBtn.addEventListener('click', resetGame);
+
+    window.onload = function() {
+      buildStepGrid();
+      resetGame();
+    };
+  </script>
+</body>
+</html>
